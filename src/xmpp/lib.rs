@@ -12,7 +12,7 @@ use std::io::net::addrinfo::get_host_addresses;
 use std::io::net::ip::SocketAddr;
 use std::io::net::tcp::TcpStream;
 use std::io::{Buffer, Stream};
-use std::io::buffered::BufferedStream;
+use std::io::BufferedStream;
 use extra::base64;
 use extra::base64::ToBase64;
 use openssl::ssl::{SslContext, SslStream, Sslv23};
