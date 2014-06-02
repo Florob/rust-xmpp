@@ -5,60 +5,22 @@ extern crate serialize;
 extern crate xml;
 extern crate openssl;
 
-use std::str;
 use std::mem;
 use std::io::net::tcp::TcpStream;
-use std::io::{Buffer, Stream};
 use std::io::BufferedStream;
 use std::io::IoResult;
 use serialize::base64;
 use serialize::base64::ToBase64;
 use openssl::ssl::{SslContext, SslStream, Sslv23};
 
-trait ReadString {
-    fn read_str(&mut self) -> IoResult<String>;
-}
+use read_str::ReadString;
 
-impl<S: Stream> ReadString for BufferedStream<S> {
-    fn read_str(&mut self) -> IoResult<String> {
-        let (result, last) = {
-            let available = try!(self.fill_buf());
-            let len = available.len();
-            let mut last = if len < 3 { 0 } else { len - 3 };
-            while last < len {
-                let width = str::utf8_char_width(available[last]);
-                if width == 0 {
-                    last += 1;
-                    continue;
-                }
-                if last+width <= len {
-                    last += width;
-                } else {
-                    break;
-                }
-            }
-            (str::from_utf8(available.slice_to(last)).unwrap().to_string(), last)
-        };
-        self.consume(last);
-
-        Ok(result)
-    }
-}
+mod read_str;
 
 enum XmppSocket {
     Tcp(BufferedStream<TcpStream>),
     Tls(BufferedStream<SslStream<TcpStream>>),
     NoSock
-}
-
-impl Reader for XmppSocket {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        match *self {
-            Tcp(ref mut stream) => stream.read(buf),
-            Tls(ref mut stream) => stream.read(buf),
-            NoSock => fail!("No socket yet")
-        }
-    }
 }
 
 impl Writer for XmppSocket {
