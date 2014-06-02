@@ -1,30 +1,28 @@
-#[crate_id = "xmpp#0.1"];
-#[crate_type = "lib" ];
-#[forbid(non_camel_case_types)];
+#![crate_id = "xmpp#0.1"]
+#![crate_type = "lib" ]
 
-extern mod extra;
-extern mod xml;
-extern mod openssl = "github.com/sfackler/rust-openssl";
+extern crate serialize;
+extern crate xml;
+extern crate openssl;
 
 use std::str;
-use std::util;
-use std::io::net::addrinfo::get_host_addresses;
-use std::io::net::ip::SocketAddr;
+use std::mem;
 use std::io::net::tcp::TcpStream;
 use std::io::{Buffer, Stream};
 use std::io::BufferedStream;
-use extra::base64;
-use extra::base64::ToBase64;
+use std::io::IoResult;
+use serialize::base64;
+use serialize::base64::ToBase64;
 use openssl::ssl::{SslContext, SslStream, Sslv23};
 
 trait ReadString {
-    fn read_str(&mut self) -> ~str;
+    fn read_str(&mut self) -> IoResult<String>;
 }
 
 impl<S: Stream> ReadString for BufferedStream<S> {
-    fn read_str(&mut self) -> ~str {
+    fn read_str(&mut self) -> IoResult<String> {
         let (result, last) = {
-            let available = self.fill();
+            let available = try!(self.fill_buf());
             let len = available.len();
             let mut last = if len < 3 { 0 } else { len - 3 };
             while last < len {
@@ -39,10 +37,11 @@ impl<S: Stream> ReadString for BufferedStream<S> {
                     break;
                 }
             }
-            (str::from_utf8(available.slice_to(last)).to_owned(), last)
+            (str::from_utf8(available.slice_to(last)).unwrap().to_string(), last)
         };
         self.consume(last);
-        return result;
+
+        Ok(result)
     }
 }
 
@@ -53,7 +52,7 @@ enum XmppSocket {
 }
 
 impl Reader for XmppSocket {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         match *self {
             Tcp(ref mut stream) => stream.read(buf),
             Tls(ref mut stream) => stream.read(buf),
@@ -63,7 +62,7 @@ impl Reader for XmppSocket {
 }
 
 impl Writer for XmppSocket {
-    fn write(&mut self, buf: &[u8]) {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         match *self {
             Tcp(ref mut stream) => stream.write(buf),
             Tls(ref mut stream) => stream.write(buf),
@@ -71,7 +70,7 @@ impl Writer for XmppSocket {
         }
     }
 
-    fn flush(&mut self) {
+    fn flush(&mut self) -> IoResult<()> {
         match *self {
             Tcp(ref mut stream) => stream.flush(),
             Tls(ref mut stream) => stream.flush(),
@@ -81,205 +80,203 @@ impl Writer for XmppSocket {
 }
 
 impl ReadString for XmppSocket {
-    fn read_str(&mut self) -> ~str {
+    fn read_str(&mut self) -> IoResult<String> {
         match *self {
             Tcp(ref mut stream) => stream.read_str(),
             Tls(ref mut stream) => stream.read_str(),
-            NoSock => fail!("No socket yet")
+            NoSock => fail!("Tried to read string before socket exists")
         }
     }
 }
 
 struct XmppHandler {
-    priv username: ~str,
-    priv password: ~str,
-    priv domain: ~str,
-    priv socket: XmppSocket
+    username: String,
+    password: String,
+    domain: String,
+    socket: XmppSocket
 }
 
 pub struct XmppStream {
-    priv parser: xml::Parser,
-    priv builder: xml::ElementBuilder,
-    priv handler: XmppHandler
+    parser: xml::Parser,
+    builder: xml::ElementBuilder,
+    handler: XmppHandler
 }
 
 impl XmppStream {
-    pub fn new(user: ~str, domain: ~str, password: ~str) -> XmppStream {
+    pub fn new(user: &str, domain: &str, password: &str) -> XmppStream {
         XmppStream {
             parser: xml::Parser::new(),
             builder: xml::ElementBuilder::new(),
             handler: XmppHandler {
-                username: user,
-                password: password,
-                domain: domain,
+                username: user.to_string(),
+                password: password.to_string(),
+                domain: domain.to_string(),
                 socket: NoSock
             }
         }
     }
 
-    pub fn connect(&mut self) {
-        let addresses = get_host_addresses(self.handler.domain).expect("Failed to resolve domain");
-
-        let mut stream = None;
-        for ip in addresses.iter() {
-            let addr = SocketAddr { ip: *ip, port: 5222 };
-            stream = TcpStream::connect(addr);
-            if stream.is_some() { break; }
-        }
-        let stream = stream.expect("Failed to connect");
+    pub fn connect(&mut self) -> IoResult<()> {
+        let stream = {
+            let address = self.handler.domain.as_slice();
+            try!(TcpStream::connect(address, 5222))
+        };
 
         self.handler.socket = Tcp(BufferedStream::new(stream));
-
-        self.handler.start_stream();
+        self.handler.start_stream()
     }
 
-    pub fn handle(&mut self) {
+    pub fn handle(&mut self) -> IoResult<()> {
         let mut closed = false;
         while !closed {
             let string = {
                 let socket = &mut self.handler.socket;
-                socket.read_str()
+                try!(socket.read_str())
             };
-            self.parser.parse_str(string, |event| {
+            let builder = &mut self.builder;
+            let handler = &mut self.handler;
+            self.parser.feed_str(string.as_slice());
+            for event in self.parser {
                 match event {
                     Ok(xml::StartTag(xml::StartTag {
-                        name: ~"stream",
-                        ns: Some(~"http://etherx.jabber.org/streams"),
-                        prefix: prefix, ..
-                    })) => {
+                        name: ref name,
+                        ns: Some(ref ns),
+                        prefix: ref prefix, ..
+                    })) if name.as_slice() == "stream" && ns.as_slice() == "http://etherx.jabber.org/streams" => {
                         println!("Got stream start");
-                        match prefix {
-                            Some(prefix) => {
-                                self.builder = xml::ElementBuilder::new();
-                                self.builder.set_default_ns(~"jabber:client");
-                                self.builder.define_prefix(prefix,
-                                                           ~"http://etherx.jabber.org/streams");
+                        match *prefix {
+                            Some(ref prefix) => {
+                                *builder = xml::ElementBuilder::new();
+                                builder.set_default_ns("jabber:client".to_string());
+                                builder.define_prefix(prefix.clone(), "http://etherx.jabber.org/streams".to_string());
                             }
                             None => ()
                         }
                     }
                     Ok(xml::EndTag(xml::EndTag {
-                        name: ~"stream",
-                        ns: Some(~"http://etherx.jabber.org/streams"), ..
-                    })) => {
+                        name: ref name,
+                        ns: Some(ref ns), ..
+                    })) if name.as_slice() == "stream" && ns.as_slice() == "http://etherx.jabber.org/streams" => {
                         println!("Stream closed");
 
-                        let socket = &mut self.handler.socket;
-                        socket.write(bytes!("</stream:stream>"));
-                        socket.flush();
+                        try!(handler.close_stream());
                         closed = true;
                     }
-                    Ok(event) => match self.builder.push_event(event) {
-                        Ok(Some(ref e)) => { self.handler.handle_stanza(e); }
-                        Ok(None) => (),
-                        Err(e) => println!("{}", e),
-                    },
+                    Ok(event) => {
+                        match builder.push_event(event) {
+                            Ok(Some(ref e)) => { try!(handler.handle_stanza(e)); }
+                            Ok(None) => (),
+                            Err(e) => println!("{}", e),
+                        }
+                    }
                     Err(e) => println!("Line: {} Column: {} Msg: {}", e.line, e.col, e.msg),
                 }
-            });
+            }
         }
+        Ok(())
     }
 }
 
 impl XmppHandler {
-    fn start_stream(&mut self) {
-        let socket = &mut self.socket;
-        socket.write(bytes!("<?xml version='1.0'?>\n\
+    fn start_stream(&mut self) -> IoResult<()> {
+        let start = format!("<?xml version='1.0'?>\n\
                              <stream:stream xmlns:stream='http://etherx.jabber.org/streams' \
-                             xmlns='jabber:client' version='1.0' "));
-        let to = format!("to='{}'>", self.domain);
-        socket.write(to.as_bytes());
-        socket.flush();
+                             xmlns='jabber:client' version='1.0' to='{}'>", self.domain);
+        try!(self.socket.write(start.as_bytes()));
+        self.socket.flush()
     }
 
-    fn handle_stanza(&mut self, stanza: &xml::Element) {
+    fn close_stream(&mut self) -> IoResult<()> {
+        try!(self.socket.write(bytes!("</stream:stream>")));
+        self.socket.flush()
+    }
+
+    fn handle_stanza(&mut self, stanza: &xml::Element) -> IoResult<()> {
         println!("In: {}", *stanza)
         match stanza {
             &xml::Element {
-                name: ~"features",
-                ns: Some(~"http://etherx.jabber.org/streams"), ..
-            } => {
+                name: ref name,
+                ns: Some(ref ns), ..
+            } if name.as_slice() == "features" && ns.as_slice() == "http://etherx.jabber.org/streams" => {
                 // StartTLS
                 let starttls = stanza.child_with_name_and_ns("starttls",
-                    Some(~"urn:ietf:params:xml:ns:xmpp-tls"));
+                    Some("urn:ietf:params:xml:ns:xmpp-tls".to_string()));
                 if starttls.is_some() {
                     let socket = &mut self.socket;
-                    socket.write(bytes!("<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>"));
-                    socket.flush();
-                    return;
+                    try!(socket.write(bytes!("<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>")));
+                    return socket.flush();
                 }
 
                 // Auth mechanisms
                 let mechs = stanza.child_with_name_and_ns("mechanisms",
-                    Some(~"urn:ietf:params:xml:ns:xmpp-sasl"));
+                    Some("urn:ietf:params:xml:ns:xmpp-sasl".to_string()));
                 if mechs.is_some() {
-                    self.handle_mechs(mechs.unwrap());
-                    return;
+                    return self.handle_mechs(mechs.unwrap());
                 }
 
                 // Bind
                 let bind = stanza.child_with_name_and_ns("bind",
-                    Some(~"urn:ietf:params:xml:ns:xmpp-bind"));
+                    Some("urn:ietf:params:xml:ns:xmpp-bind".to_string()));
                 if bind.is_some() {
-                    self.handle_bind();
-                    return;
+                    return self.handle_bind();
                 }
             }
 
             &xml::Element {
-                name: ~"proceed",
-                ns: Some(~"urn:ietf:params:xml:ns:xmpp-tls"), ..
-            } => {
-                let socket = util::replace(&mut self.socket, NoSock);
+                name: ref name,
+                ns: Some(ref ns), ..
+            } if name.as_slice() == "proceed" && ns.as_slice() == "urn:ietf:params:xml:ns:xmpp-tls" => {
+                let socket = mem::replace(&mut self.socket, NoSock);
                 match socket {
                     Tcp(sock) => {
                         let ctx = SslContext::new(Sslv23);
                         let ssl = SslStream::new(&ctx, sock.unwrap());
                         self.socket = Tls(BufferedStream::new(ssl));
-                        self.start_stream();
+                        return self.start_stream();
                     }
                     _ => fail!("No socket, or TLS already negotiated")
                 }
             }
 
             &xml::Element {
-                name: ~"success",
-                ns: Some(~"urn:ietf:params:xml:ns:xmpp-sasl"), ..
-            } => {
-                self.start_stream();
+                name: ref name,
+                ns: Some(ref ns), ..
+            } if name.as_slice() == "success" && ns.as_slice() == "urn:ietf:params:xml:ns:xmpp-sasl" => {
+                return self.start_stream();
             }
             _ => ()
         }
+        Ok(())
     }
 
-    fn handle_mechs(&mut self, mechs: &xml::Element) {
+    fn handle_mechs(&mut self, mechs: &xml::Element) -> IoResult<()> {
         let mechs = mechs.children_with_name_and_ns("mechanism",
-                                                    Some(~"urn:ietf:params:xml:ns:xmpp-sasl"));
+                                                    Some("urn:ietf:params:xml:ns:xmpp-sasl".to_string()));
 
         for mech in mechs.iter() {
-            if mech.content_str() == ~"PLAIN" {
-                let mut data: ~[u8] = ~[0];
+            if mech.content_str().as_slice() == "PLAIN" {
+                let mut data: Vec<u8> = vec![0];
                 data.push_all(self.username.as_bytes());
                 data.push(0);
                 data.push_all(self.password.as_bytes());
-                let data = data.to_base64(base64::STANDARD);
+                let data = data.as_slice().to_base64(base64::STANDARD);
 
                 let socket = &mut self.socket;
-                socket.write(bytes!("<auth mechanism='PLAIN' \
-                                      xmlns='urn:ietf:params:xml:ns:xmpp-sasl'>"));
-                socket.write(data.as_bytes());
-                socket.write(bytes!("</auth>"));
-                socket.flush();
-                break;
+                try!(socket.write(bytes!("<auth mechanism='PLAIN' \
+                                           xmlns='urn:ietf:params:xml:ns:xmpp-sasl'>")));
+                try!(socket.write(data.as_bytes()));
+                try!(socket.write(bytes!("</auth>")));
+                return socket.flush();
             }
         }
+
+        Ok(())
     }
 
-    fn handle_bind(&mut self) {
-        let socket = &mut self.socket;
-        socket.write(bytes!("<iq type='set' id='bind'>\
-                                 <bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'/>\
-                             </iq>"));
-        socket.flush();
+    fn handle_bind(&mut self) -> IoResult<()> {
+        try!(self.socket.write(bytes!("<iq type='set' id='bind'>\
+                                         <bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'/>\
+                                       </iq>")));
+        self.socket.flush()
     }
 }
