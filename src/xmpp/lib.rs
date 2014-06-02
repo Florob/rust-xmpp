@@ -14,8 +14,11 @@ use serialize::base64::ToBase64;
 use openssl::ssl::{SslContext, SslStream, Sslv23};
 
 use read_str::ReadString;
+use auth::Authenticator;
+use auth::PlainAuth;
 
 mod read_str;
+mod auth;
 
 enum XmppSocket {
     Tcp(BufferedStream<TcpStream>),
@@ -55,7 +58,8 @@ struct XmppHandler {
     username: String,
     password: String,
     domain: String,
-    socket: XmppSocket
+    socket: XmppSocket,
+    authenticator: Option<Box<Authenticator>>
 }
 
 pub struct XmppStream {
@@ -73,7 +77,8 @@ impl XmppStream {
                 username: user.to_string(),
                 password: password.to_string(),
                 domain: domain.to_string(),
-                socket: NoSock
+                socket: NoSock,
+                authenticator: None
             }
         }
     }
@@ -216,20 +221,25 @@ impl XmppHandler {
                                                     Some("urn:ietf:params:xml:ns:xmpp-sasl".to_string()));
 
         for mech in mechs.iter() {
-            if mech.content_str().as_slice() == "PLAIN" {
-                let mut data: Vec<u8> = vec![0];
-                data.push_all(self.username.as_bytes());
-                data.push(0);
-                data.push_all(self.password.as_bytes());
-                let data = data.as_slice().to_base64(base64::STANDARD);
-
-                let socket = &mut self.socket;
-                try!(socket.write(bytes!("<auth mechanism='PLAIN' \
-                                           xmlns='urn:ietf:params:xml:ns:xmpp-sasl'>")));
-                try!(socket.write(data.as_bytes()));
-                try!(socket.write(bytes!("</auth>")));
-                return socket.flush();
+            let mech = mech.content_str();
+            match mech.as_slice() {
+                "PLAIN" => {
+                    let auth: PlainAuth = Authenticator::new(self.username.as_slice(),
+                                                             self.password.as_slice(), None);
+                    self.authenticator = Some(box auth as Box<Authenticator>);
+                }
+                _ => continue
             }
+
+            let data = self.authenticator.get_ref().initial().as_slice().to_base64(base64::STANDARD);
+
+            let socket = &mut self.socket;
+            try!(socket.write(bytes!("<auth mechanism='")));
+            try!(socket.write(mech.as_bytes()));
+            try!(socket.write(bytes!("' xmlns='urn:ietf:params:xml:ns:xmpp-sasl'>")));
+            try!(socket.write(data.as_bytes()));
+            try!(socket.write(bytes!("</auth>")));
+            return socket.flush();
         }
 
         Ok(())
