@@ -19,6 +19,7 @@ use auth::PlainAuth;
 
 mod read_str;
 mod auth;
+pub mod ns;
 
 enum XmppSocket {
     Tcp(BufferedStream<TcpStream>),
@@ -109,13 +110,13 @@ impl XmppStream {
                         name: ref name,
                         ns: Some(ref ns),
                         prefix: ref prefix, ..
-                    })) if name.as_slice() == "stream" && ns.as_slice() == "http://etherx.jabber.org/streams" => {
+                    })) if name.as_slice() == "stream" && ns.as_slice() == ns::STREAMS => {
                         println!("Got stream start");
                         match *prefix {
                             Some(ref prefix) => {
                                 *builder = xml::ElementBuilder::new();
-                                builder.set_default_ns("jabber:client".to_string());
-                                builder.define_prefix(prefix.clone(), "http://etherx.jabber.org/streams".to_string());
+                                builder.set_default_ns(ns::JABBER_CLIENT.to_string());
+                                builder.define_prefix(prefix.clone(), ns::STREAMS.to_string());
                             }
                             None => ()
                         }
@@ -123,7 +124,7 @@ impl XmppStream {
                     Ok(xml::EndTag(xml::EndTag {
                         name: ref name,
                         ns: Some(ref ns), ..
-                    })) if name.as_slice() == "stream" && ns.as_slice() == "http://etherx.jabber.org/streams" => {
+                    })) if name.as_slice() == "stream" && ns.as_slice() == ns::STREAMS => {
                         println!("Stream closed");
 
                         try!(handler.close_stream());
@@ -147,8 +148,8 @@ impl XmppStream {
 impl XmppHandler {
     fn start_stream(&mut self) -> IoResult<()> {
         let start = format!("<?xml version='1.0'?>\n\
-                             <stream:stream xmlns:stream='http://etherx.jabber.org/streams' \
-                             xmlns='jabber:client' version='1.0' to='{}'>", self.domain);
+                             <stream:stream xmlns:stream='{}' xmlns='{}' version='1.0' to='{}'>",
+                             ns::STREAMS, ns::JABBER_CLIENT, self.domain);
         try!(self.socket.write(start.as_bytes()));
         self.socket.flush()
     }
@@ -164,26 +165,27 @@ impl XmppHandler {
             &xml::Element {
                 name: ref name,
                 ns: Some(ref ns), ..
-            } if name.as_slice() == "features" && ns.as_slice() == "http://etherx.jabber.org/streams" => {
+            } if name.as_slice() == "features" && ns.as_slice() == ns::STREAMS => {
                 // StartTLS
                 let starttls = stanza.child_with_name_and_ns("starttls",
-                    Some("urn:ietf:params:xml:ns:xmpp-tls".to_string()));
+                    Some(ns::FEATURE_TLS.to_string()));
                 if starttls.is_some() {
                     let socket = &mut self.socket;
-                    try!(socket.write(bytes!("<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>")));
+                    try!(socket.write(format!("<starttls xmlns='{}'/>",
+                                              ns::FEATURE_TLS).as_bytes()));
                     return socket.flush();
                 }
 
                 // Auth mechanisms
                 let mechs = stanza.child_with_name_and_ns("mechanisms",
-                    Some("urn:ietf:params:xml:ns:xmpp-sasl".to_string()));
+                    Some(ns::FEATURE_SASL.to_string()));
                 if mechs.is_some() {
                     return self.handle_mechs(mechs.unwrap());
                 }
 
                 // Bind
                 let bind = stanza.child_with_name_and_ns("bind",
-                    Some("urn:ietf:params:xml:ns:xmpp-bind".to_string()));
+                    Some(ns::FEATURE_BIND.to_string()));
                 if bind.is_some() {
                     return self.handle_bind();
                 }
@@ -192,7 +194,7 @@ impl XmppHandler {
             &xml::Element {
                 name: ref name,
                 ns: Some(ref ns), ..
-            } if name.as_slice() == "proceed" && ns.as_slice() == "urn:ietf:params:xml:ns:xmpp-tls" => {
+            } if name.as_slice() == "proceed" && ns.as_slice() == ns::FEATURE_TLS => {
                 let socket = mem::replace(&mut self.socket, NoSock);
                 match socket {
                     Tcp(sock) => {
@@ -208,7 +210,7 @@ impl XmppHandler {
             &xml::Element {
                 name: ref name,
                 ns: Some(ref ns), ..
-            } if name.as_slice() == "success" && ns.as_slice() == "urn:ietf:params:xml:ns:xmpp-sasl" => {
+            } if name.as_slice() == "success" && ns.as_slice() == ns::FEATURE_SASL => {
                 return self.start_stream();
             }
             _ => ()
@@ -218,7 +220,7 @@ impl XmppHandler {
 
     fn handle_mechs(&mut self, mechs: &xml::Element) -> IoResult<()> {
         let mechs = mechs.children_with_name_and_ns("mechanism",
-                                                    Some("urn:ietf:params:xml:ns:xmpp-sasl".to_string()));
+                                                    Some(ns::FEATURE_SASL.to_string()));
 
         for mech in mechs.iter() {
             let mech = mech.content_str();
@@ -234,11 +236,8 @@ impl XmppHandler {
             let data = self.authenticator.get_ref().initial().as_slice().to_base64(base64::STANDARD);
 
             let socket = &mut self.socket;
-            try!(socket.write(bytes!("<auth mechanism='")));
-            try!(socket.write(mech.as_bytes()));
-            try!(socket.write(bytes!("' xmlns='urn:ietf:params:xml:ns:xmpp-sasl'>")));
-            try!(socket.write(data.as_bytes()));
-            try!(socket.write(bytes!("</auth>")));
+            try!(socket.write(format!("<auth mechanism='{}' xmlns='{}'>{}</auth>",
+                                      mech, ns::FEATURE_SASL, data).as_bytes()));
             return socket.flush();
         }
 
@@ -246,9 +245,9 @@ impl XmppHandler {
     }
 
     fn handle_bind(&mut self) -> IoResult<()> {
-        try!(self.socket.write(bytes!("<iq type='set' id='bind'>\
-                                         <bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'/>\
-                                       </iq>")));
+        try!(self.socket.write(format!("<iq type='set' id='bind'>\
+                                         <bind xmlns='{}'/>\
+                                       </iq>", ns::FEATURE_BIND).as_bytes()));
         self.socket.flush()
     }
 }
