@@ -1,6 +1,6 @@
 RUSTC?=rustc
 
-RUSTCFLAGS=-O -L src/rust-openssl/build/ -L src/RustyXML/build/ -L build/ --out-dir=build/
+RUSTCFLAGS=-O -g -L src/rust-openssl/build/ -L src/RustyXML/build/ -L build/ --out-dir=build/
 
 alL: example
 

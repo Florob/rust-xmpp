@@ -15,7 +15,7 @@ impl Authenticator for PlainAuth {
         }
     }
 
-    fn initial(&self) -> Vec<u8> {
+    fn initial(&mut self) -> Vec<u8> {
         let mut data: Vec<u8> = Vec::new();
         for authzid in self.authzid.iter() {
             data.push_all(authzid.as_bytes());

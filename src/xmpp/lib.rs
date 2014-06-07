@@ -1,6 +1,8 @@
 #![crate_id = "xmpp#0.1"]
 #![crate_type = "lib" ]
 
+#![feature(macro_rules)]
+
 extern crate serialize;
 extern crate xml;
 extern crate openssl;
@@ -10,12 +12,12 @@ use std::io::net::tcp::TcpStream;
 use std::io::BufferedStream;
 use std::io::IoResult;
 use serialize::base64;
-use serialize::base64::ToBase64;
+use serialize::base64::{FromBase64, ToBase64};
 use openssl::ssl::{SslContext, SslStream, Sslv23};
 
 use read_str::ReadString;
 use auth::Authenticator;
-use auth::PlainAuth;
+use auth::{PlainAuth, ScramAuth};
 
 mod read_str;
 mod auth;
@@ -210,7 +212,45 @@ impl XmppHandler {
             &xml::Element {
                 name: ref name,
                 ns: Some(ref ns), ..
+            } if name.as_slice() == "challenge" && ns.as_slice() == ns::FEATURE_SASL => {
+                let challenge = match stanza.content_str().as_slice().from_base64() {
+                    Ok(c) => c,
+                    Err(_) => return Ok(())
+                };
+                let auth = self.authenticator.get_mut_ref();
+                let result = match auth.continuation(challenge.as_slice()) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        println!("{}", e);
+                        return Ok(());
+                    }
+                };
+
+                let data = result.as_slice().to_base64(base64::STANDARD);
+                let socket = &mut self.socket;
+                try!(socket.write(format!("<response xmlns='{}'>{}</response>",
+                                          ns::FEATURE_SASL, data).as_bytes()));
+                return socket.flush();
+            }
+
+            &xml::Element {
+                name: ref name,
+                ns: Some(ref ns), ..
             } if name.as_slice() == "success" && ns.as_slice() == ns::FEATURE_SASL => {
+                let success = match stanza.content_str().as_slice().from_base64() {
+                    Ok(c) => c,
+                    Err(_) => return Ok(())
+                };
+                {
+                    let auth = self.authenticator.get_mut_ref();
+                    match auth.continuation(success.as_slice()) {
+                        Ok(_) => (),
+                        Err(e) => {
+                            println!("{}", e);
+                            return Ok(());
+                        }
+                    }
+                }
                 return self.start_stream();
             }
             _ => ()
@@ -225,6 +265,11 @@ impl XmppHandler {
         for mech in mechs.iter() {
             let mech = mech.content_str();
             match mech.as_slice() {
+                "SCRAM-SHA-1" => {
+                    let auth: ScramAuth = Authenticator::new(self.username.as_slice(),
+                                                             self.password.as_slice(), None);
+                    self.authenticator = Some(box auth as Box<Authenticator>);
+                }
                 "PLAIN" => {
                     let auth: PlainAuth = Authenticator::new(self.username.as_slice(),
                                                              self.password.as_slice(), None);
@@ -233,7 +278,8 @@ impl XmppHandler {
                 _ => continue
             }
 
-            let data = self.authenticator.get_ref().initial().as_slice().to_base64(base64::STANDARD);
+            let auth = self.authenticator.get_mut_ref();
+            let data = auth.initial().as_slice().to_base64(base64::STANDARD);
 
             let socket = &mut self.socket;
             try!(socket.write(format!("<auth mechanism='{}' xmlns='{}'>{}</auth>",
