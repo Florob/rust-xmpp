@@ -103,10 +103,10 @@ impl ScramAuth {
 
         let mut result = Vec::new();
         // Add c=<base64(GS2Header+channelBindingData)>
-        result.push_all(bytes!("c="));
+        result.push_all(b"c=");
         result.push_all(gs2header.as_bytes());
         // Add r=<nonce>
-        result.push_all(bytes!(",r="));
+        result.push_all(b",r=");
         result.push_all(nonce.as_bytes());
 
         // SaltedPassword := Hi(Normalize(password), salt, i)
@@ -131,7 +131,7 @@ impl ScramAuth {
         auth_message.push_all(result.as_slice());
 
         // ClientKey := HMAC(SaltedPassword, "Client Key")
-        let client_key = hmac_sha1(salted_passwd.as_slice(), bytes!("Client Key"));
+        let client_key = hmac_sha1(salted_passwd.as_slice(), b"Client Key");
 
         // StoredKey := H(ClientKey)
         let stored_key = sha1(client_key.as_slice());
@@ -139,7 +139,7 @@ impl ScramAuth {
         // ClientSignature := HMAC(StoredKey, AuthMessage)
         let client_signature = hmac_sha1(stored_key.as_slice(), auth_message.as_slice());
         // ServerKey := HMAC(SaltedPassword, "Server Key")
-        let server_key = hmac_sha1(salted_passwd.as_slice(), bytes!("Server Key"));
+        let server_key = hmac_sha1(salted_passwd.as_slice(), b"Server Key");
         // ServerSignature := HMAC(ServerKey, AuthMessage)
         let server_signature = hmac_sha1(server_key.as_slice(), auth_message.as_slice());
         // ClientProof := ClientKey XOR ClientSignature
@@ -148,7 +148,7 @@ impl ScramAuth {
         }).collect();
 
         // Add p=<base64(ClientProof)>
-        result.push_all(bytes!(",p="));
+        result.push_all(b",p=");
         result.push_all(client_proof.as_slice().to_base64(base64::STANDARD).as_bytes());
 
         self.state = WaitFinal(server_signature);
