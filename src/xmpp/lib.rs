@@ -120,8 +120,8 @@ impl XmppStream {
                         match *prefix {
                             Some(ref prefix) => {
                                 *builder = xml::ElementBuilder::new();
-                                builder.set_default_ns(ns::JABBER_CLIENT.to_string());
-                                builder.define_prefix(prefix.clone(), ns::STREAMS.to_string());
+                                builder.set_default_ns(ns::JABBER_CLIENT);
+                                builder.define_prefix(prefix.as_slice(), ns::STREAMS);
                             }
                             None => ()
                         }
@@ -176,22 +176,19 @@ impl XmppHandler {
                 ns: Some(ref ns), ..
             } if name.as_slice() == "features" && ns.as_slice() == ns::STREAMS => {
                 // StartTLS
-                let starttls = stanza.child_with_name_and_ns("starttls",
-                    Some(ns::FEATURE_TLS.to_string()));
+                let starttls = stanza.child_with_name_and_ns("starttls", Some(ns::FEATURE_TLS));
                 if starttls.is_some() {
                     return self.send(format!("<starttls xmlns='{}'/>", ns::FEATURE_TLS));
                 }
 
                 // Auth mechanisms
-                let mechs = stanza.child_with_name_and_ns("mechanisms",
-                    Some(ns::FEATURE_SASL.to_string()));
+                let mechs = stanza.child_with_name_and_ns("mechanisms", Some(ns::FEATURE_SASL));
                 if mechs.is_some() {
                     return self.handle_mechs(mechs.unwrap());
                 }
 
                 // Bind
-                let bind = stanza.child_with_name_and_ns("bind",
-                    Some(ns::FEATURE_BIND.to_string()));
+                let bind = stanza.child_with_name_and_ns("bind", Some(ns::FEATURE_BIND));
                 if bind.is_some() {
                     return self.handle_bind();
                 }
@@ -264,8 +261,7 @@ impl XmppHandler {
     }
 
     fn handle_mechs(&mut self, mechs: &xml::Element) -> IoResult<()> {
-        let mechs = mechs.children_with_name_and_ns("mechanism",
-                                                    Some(ns::FEATURE_SASL.to_string()));
+        let mechs = mechs.children_with_name_and_ns("mechanism", Some(ns::FEATURE_SASL));
 
         for mech in mechs.iter() {
             let mech = mech.content_str();
