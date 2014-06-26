@@ -176,19 +176,19 @@ impl XmppHandler {
                 ns: Some(ref ns), ..
             } if name.as_slice() == "features" && ns.as_slice() == ns::STREAMS => {
                 // StartTLS
-                let starttls = stanza.child_with_name_and_ns("starttls", Some(ns::FEATURE_TLS));
+                let starttls = stanza.get_child("starttls", Some(ns::FEATURE_TLS));
                 if starttls.is_some() {
                     return self.send(format!("<starttls xmlns='{}'/>", ns::FEATURE_TLS));
                 }
 
                 // Auth mechanisms
-                let mechs = stanza.child_with_name_and_ns("mechanisms", Some(ns::FEATURE_SASL));
+                let mechs = stanza.get_child("mechanisms", Some(ns::FEATURE_SASL));
                 if mechs.is_some() {
                     return self.handle_mechs(mechs.unwrap());
                 }
 
                 // Bind
-                let bind = stanza.child_with_name_and_ns("bind", Some(ns::FEATURE_BIND));
+                let bind = stanza.get_child("bind", Some(ns::FEATURE_BIND));
                 if bind.is_some() {
                     return self.handle_bind();
                 }
@@ -261,7 +261,7 @@ impl XmppHandler {
     }
 
     fn handle_mechs(&mut self, mechs: &xml::Element) -> IoResult<()> {
-        let mechs = mechs.children_with_name_and_ns("mechanism", Some(ns::FEATURE_SASL));
+        let mechs = mechs.get_children("mechanism", Some(ns::FEATURE_SASL));
 
         for mech in mechs.iter() {
             let mech = mech.content_str();
