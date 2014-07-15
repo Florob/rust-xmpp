@@ -1,5 +1,5 @@
-#![crate_id = "xmpp#0.1"]
-#![crate_type = "lib" ]
+#![crate_name = "xmpp"]
+#![crate_type = "lib"]
 
 #![feature(macro_rules)]
 
