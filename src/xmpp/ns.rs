@@ -1,3 +1,9 @@
+// rust-xmpp
+// Copyright (c) 2014 Florian Zeitz
+//
+// This project is MIT licensed.
+// Please see the COPYING file for more information.
+
 pub static JABBER_CLIENT: &'static str = "jabber:client";
 pub static STREAMS: &'static str = "http://etherx.jabber.org/streams";
 

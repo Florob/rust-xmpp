@@ -1,3 +1,9 @@
+// rust-xmpp
+// Copyright (c) 2014 Florian Zeitz
+//
+// This project is MIT licensed.
+// Please see the COPYING file for more information.
+
 pub use self::plain::PlainAuth;
 pub use self::scram::ScramAuth;
 

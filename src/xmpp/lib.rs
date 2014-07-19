@@ -1,3 +1,9 @@
+// rust-xmpp
+// Copyright (c) 2014 Florian Zeitz
+//
+// This project is MIT licensed.
+// Please see the COPYING file for more information.
+
 #![crate_name = "xmpp"]
 #![crate_type = "lib"]
 
