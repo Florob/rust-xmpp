@@ -1,0 +1,23 @@
+[package]
+
+name = "rust-xmpp"
+version = "0.0.0"
+authors = [ "florob@babelmonkeys.de" ]
+
+[[bin]]
+
+name = "rust-xmpp-example"
+path = "src/example/main.rs"
+
+[[lib]]
+
+name = "xmpp"
+path = "src/xmpp/lib.rs"
+
+[dependencies.RustyXML]
+
+git = "https://github.com/Florob/RustyXML"
+
+[dependencies.openssl]
+
+git = "https://github.com/sfackler/rust-openssl"
