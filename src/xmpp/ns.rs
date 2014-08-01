@@ -5,6 +5,7 @@
 // Please see the COPYING file for more information.
 
 pub static JABBER_CLIENT: &'static str = "jabber:client";
+pub static JABBER_SERVER: &'static str = "jabber:server";
 pub static STREAMS: &'static str = "http://etherx.jabber.org/streams";
 
 pub static FEATURE_BIND: &'static str = "urn:ietf:params:xml:ns:xmpp-bind";

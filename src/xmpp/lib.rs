@@ -31,6 +31,7 @@ mod read_str;
 mod xmpp_send;
 mod auth;
 pub mod ns;
+pub mod stanzas;
 
 enum XmppSocket {
     Tcp(BufferedStream<TcpStream>),
