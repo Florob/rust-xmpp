@@ -1,6 +1,0 @@
-[submodule "src/rust-openssl"]
-	path = src/rust-openssl
-	url = https://github.com/sfackler/rust-openssl.git
-[submodule "src/RustyXML"]
-	path = src/RustyXML
-	url = https://github.com/Florob/RustyXML.git
