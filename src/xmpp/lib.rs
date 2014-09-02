@@ -67,22 +67,22 @@ impl ReadString for XmppSocket {
     }
 }
 
-struct XmppHandler {
+struct XmppHandler<'a> {
     username: String,
     password: String,
     domain: String,
     socket: XmppSocket,
-    authenticator: Option<Box<Authenticator>>
+    authenticator: Option<Box<Authenticator + 'a>>
 }
 
-pub struct XmppStream {
+pub struct XmppStream<'a> {
     parser: xml::Parser,
     builder: xml::ElementBuilder,
-    handler: XmppHandler
+    handler: XmppHandler<'a>
 }
 
-impl XmppStream {
-    pub fn new(user: &str, domain: &str, password: &str) -> XmppStream {
+impl<'a> XmppStream<'a> {
+    pub fn new(user: &str, domain: &str, password: &str) -> XmppStream<'a> {
         XmppStream {
             parser: xml::Parser::new(),
             builder: xml::ElementBuilder::new(),
@@ -156,7 +156,7 @@ impl XmppStream {
     }
 }
 
-impl XmppHandler {
+impl<'a> XmppHandler<'a> {
     fn start_stream(&mut self) -> IoResult<()> {
         let start = format!("<?xml version='1.0'?>\n\
                              <stream:stream xmlns:stream='{}' xmlns='{}' version='1.0' to='{}'>",
@@ -227,7 +227,7 @@ impl XmppHandler {
                 };
 
                 let result = {
-                    let auth = self.authenticator.get_mut_ref();
+                    let auth = self.authenticator.as_mut().unwrap();
                     match auth.continuation(challenge.as_slice()) {
                         Ok(r) => r,
                         Err(e) => {
@@ -251,7 +251,7 @@ impl XmppHandler {
                     Err(_) => return Ok(())
                 };
                 {
-                    let auth = self.authenticator.get_mut_ref();
+                    let auth = self.authenticator.as_mut().unwrap();
                     match auth.continuation(success.as_slice()) {
                         Ok(_) => (),
                         Err(e) => {
@@ -287,7 +287,7 @@ impl XmppHandler {
             }
 
             let result = {
-                let auth = self.authenticator.get_mut_ref();
+                let auth = self.authenticator.as_mut().unwrap();
                 auth.initial().as_slice().to_base64(base64::STANDARD)
             };
 
