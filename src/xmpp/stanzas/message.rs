@@ -20,8 +20,8 @@ pub enum MessageType {
 pub struct Message { elem: xml::Element }
 
 impl_Stanza!("message", Message, MessageType,
-    |ty: &xml::Attribute| {
-        match ty.value.as_slice() {
+    |ty: &str| {
+        match ty {
             "headline" => Some(Headline),
             "chat" => Some(Chat),
             "groupchat" => Some(Groupchat),

@@ -50,15 +50,15 @@ macro_rules! impl_Stanza(
             }
 
             fn get_to(&self) -> Option<&str> {
-                self.elem.get_attribute("to", None).map(|to| to.value.as_slice())
+                self.elem.get_attribute("to", None)
             }
 
             fn get_from(&self) -> Option<&str> {
-                self.elem.get_attribute("from", None).map(|from| from.value.as_slice())
+                self.elem.get_attribute("from", None)
             }
 
             fn get_id(&self) -> Option<&str> {
-                self.elem.get_attribute("id", None).map(|id| id.value.as_slice())
+                self.elem.get_attribute("id", None)
             }
 
             fn get_type(&self) -> Option<$ty> {

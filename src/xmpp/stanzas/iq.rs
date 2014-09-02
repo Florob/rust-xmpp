@@ -19,8 +19,8 @@ pub enum IqType {
 pub struct Iq { elem: xml::Element }
 
 impl_Stanza!("iq", Iq, IqType,
-    |ty: &xml::Attribute| {
-        match ty.value.as_slice() {
+    |ty: &str| {
+        match ty {
             "get" => Some(Get),
             "set" => Some(Set),
             "result" => Some(Result),

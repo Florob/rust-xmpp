@@ -23,8 +23,8 @@ pub enum PresenceType {
 pub struct Presence { elem: xml::Element }
 
 impl_Stanza!("presence", Presence, PresenceType,
-    |ty: &xml::Attribute| {
-        match ty.value.as_slice() {
+    |ty: &str| {
+        match ty {
             "error" => Some(Error),
             "probe" => Some(Probe),
             "subscribe" => Some(Subscribe),
