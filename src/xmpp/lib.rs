@@ -17,7 +17,7 @@ extern crate openssl;
 use std::mem;
 use std::io::net::tcp::TcpStream;
 use std::io::BufferedStream;
-use std::io::IoResult;
+use std::io::{IoResult, IoError, OtherIoError};
 use serialize::base64;
 use serialize::base64::{FromBase64, ToBase64};
 use openssl::ssl::{SslContext, SslStream, Sslv23};
@@ -208,8 +208,22 @@ impl<'a> XmppHandler<'a> {
                 let socket = mem::replace(&mut self.socket, NoSock);
                 match socket {
                     Tcp(sock) => {
-                        let ctx = SslContext::new(Sslv23);
-                        let ssl = SslStream::new(&ctx, sock.unwrap());
+                        let ctx = match SslContext::new(Sslv23) {
+                            Ok(ctx) => ctx,
+                            Err(_) => return Err(IoError {
+                                kind: OtherIoError,
+                                desc: "Couldn not create SSL context",
+                                detail: None
+                            })
+                        };
+                        let ssl = match SslStream::new(&ctx, sock.unwrap()) {
+                            Ok(ssl) => ssl,
+                            Err(_) => return Err(IoError {
+                                kind: OtherIoError,
+                                desc: "Couldn not create SSL stream",
+                                detail: None
+                            })
+                        };
                         self.socket = Tls(BufferedStream::new(ssl));
                         return self.start_stream();
                     }

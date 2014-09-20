@@ -35,7 +35,7 @@ pub struct ScramAuth {
 fn gen_nonce() -> Vec<u8> {
     let mut nonce = rand_bytes(64);
 
-    for c in nonce.mut_iter() {
+    for c in nonce.iter_mut() {
         // Restrict output to printable ASCII, excludint '~'
         *c = ( *c % (('~' as u8) - ('!' as u8)) ) + ('!' as u8);
         // Map occurences of ',' to '~'
