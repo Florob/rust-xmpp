@@ -3,7 +3,7 @@ rust-xmpp
 
 This is an early version of a XMPP library written in Rust.
 At this point in time it is mostly a testbed for
-RustyXML <https://github.com/Florob/RustyXML>.
+[RustyXML](https://github.com/Florob/RustyXML).
 More functionality will be available eventually, but may take time.
 
 Features
