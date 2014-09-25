@@ -2,17 +2,17 @@
 name = "rust-xmpp"
 version = "0.0.0"
 dependencies = [
- "RustyXML 0.0.1 (git+https://github.com/Florob/RustyXML#68b4abcd6906b743eb259433fd6794b6fc735e6e)",
- "openssl 0.0.0 (git+https://github.com/sfackler/rust-openssl#a495465b75ffb18ff2303c5a11a103e00a15a13d)",
+ "RustyXML 0.0.1 (git+https://github.com/Florob/RustyXML#e940b008e624a6b97f269ccc6f05158ce6bd37ab)",
+ "openssl 0.0.0 (git+https://github.com/sfackler/rust-openssl#fa53c79e4892dfc260bc6d1e2b52892f5607de72)",
 ]
 
 [[package]]
 name = "RustyXML"
 version = "0.0.1"
-source = "git+https://github.com/Florob/RustyXML#68b4abcd6906b743eb259433fd6794b6fc735e6e"
+source = "git+https://github.com/Florob/RustyXML#e940b008e624a6b97f269ccc6f05158ce6bd37ab"
 
 [[package]]
 name = "openssl"
 version = "0.0.0"
-source = "git+https://github.com/sfackler/rust-openssl#a495465b75ffb18ff2303c5a11a103e00a15a13d"
+source = "git+https://github.com/sfackler/rust-openssl#fa53c79e4892dfc260bc6d1e2b52892f5607de72"
 
