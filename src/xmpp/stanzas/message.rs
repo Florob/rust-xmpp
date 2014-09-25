@@ -7,7 +7,7 @@
 use xml;
 use ns;
 
-use super:: Stanza;
+use super::Stanza;
 
 pub enum MessageType {
     Normal,

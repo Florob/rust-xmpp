@@ -25,7 +25,7 @@ pub trait Stanza<Type> {
 }
 
 macro_rules! impl_Stanza(
-    ($name: expr, $kind: ident, $ty: ident, $ty_some: expr, $ty_none: expr) => (
+    ($name: expr, $kind: ident, $ty: ty, $ty_some: expr, $ty_none: expr) => (
         impl Stanza<$ty> for $kind {
             fn from_element(e: xml::Element) -> Result<$kind, xml::Element> {
                 match e.ns {
@@ -77,9 +77,9 @@ mod message;
 mod presence;
 
 pub enum AStanza {
-    Iq(Iq),
-    Message(Message),
-    Presence(Presence)
+    IqStanza(Iq),
+    MessageStanza(Message),
+    PresenceStanza(Presence)
 }
 
 impl AStanza {
@@ -91,9 +91,9 @@ impl AStanza {
         }
 
         match e.name.as_slice() {
-            "iq" => Ok(Iq(Stanza::from_element(e).unwrap())),
-            "message" => Ok(Message(Stanza::from_element(e).unwrap())),
-            "presence" => Ok(Presence(Stanza::from_element(e).unwrap())),
+            "iq" => Ok(IqStanza(Stanza::from_element(e).unwrap())),
+            "message" => Ok(MessageStanza(Stanza::from_element(e).unwrap())),
+            "presence" => Ok(PresenceStanza(Stanza::from_element(e).unwrap())),
             _ => Err(e)
         }
     }

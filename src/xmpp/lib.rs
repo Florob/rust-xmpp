@@ -118,7 +118,7 @@ impl<'a> XmppStream<'a> {
             self.parser.feed_str(string.as_slice());
             for event in self.parser {
                 match event {
-                    Ok(xml::StartTag(xml::StartTag {
+                    Ok(xml::ElementStart(xml::StartTag {
                         name: ref name,
                         ns: Some(ref ns),
                         prefix: ref prefix, ..
@@ -133,7 +133,7 @@ impl<'a> XmppStream<'a> {
                             None => ()
                         }
                     }
-                    Ok(xml::EndTag(xml::EndTag {
+                    Ok(xml::ElementEnd(xml::EndTag {
                         name: ref name,
                         ns: Some(ref ns), ..
                     })) if name.as_slice() == "stream" && ns.as_slice() == ns::STREAMS => {
