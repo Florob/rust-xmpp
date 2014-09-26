@@ -27,7 +27,7 @@ pub trait Stanza<Type> {
 macro_rules! impl_Stanza(
     ($name: expr, $kind: ident, $ty: ty, $ty_some: expr, $ty_none: expr) => (
         impl Stanza<$ty> for $kind {
-            fn from_element(e: xml::Element) -> Result<$kind, xml::Element> {
+            fn from_element(e: xml::Element) -> ::std::result::Result<$kind, xml::Element> {
                 match e.ns {
                     Some(ref ns) if ns.as_slice() == ns::JABBER_CLIENT
                                     || ns.as_slice() == ns::JABBER_SERVER => (),
