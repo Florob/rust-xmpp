@@ -47,13 +47,13 @@ fn gen_nonce() -> Vec<u8> {
 fn hmac_sha1(key: &[u8], data: &[u8]) -> Vec<u8> {
     let mut hmac = HMAC(SHA1, key);
     hmac.update(data);
-    hmac.final()
+    hmac.finalize()
 }
 
 fn sha1(data: &[u8]) -> Vec<u8> {
     let sha1 = Hasher::new(SHA1);
     sha1.update(data);
-    sha1.final()
+    sha1.finalize()
 }
 
 fn parse_server_first(data: &str) -> Result<(String, Vec<u8>, uint), &'static str> {
