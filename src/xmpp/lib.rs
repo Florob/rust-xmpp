@@ -20,12 +20,15 @@ use std::io::BufferedStream;
 use std::io::{IoResult, IoError, OtherIoError};
 use serialize::base64;
 use serialize::base64::{FromBase64, ToBase64};
-use openssl::ssl::{SslContext, SslStream, Sslv23};
+use openssl::ssl::{SslContext, SslStream};
+use openssl::ssl::SslMethod::Sslv23;
 
 use read_str::ReadString;
 use xmpp_send::XmppSend;
 use auth::Authenticator;
 use auth::{PlainAuth, ScramAuth};
+
+pub use self::XmppSocket::{Tls,Tcp,NoSock};
 
 mod read_str;
 mod xmpp_send;
@@ -44,7 +47,7 @@ impl Writer for XmppSocket {
         match *self {
             Tcp(ref mut stream) => stream.write(buf),
             Tls(ref mut stream) => stream.write(buf),
-            NoSock => fail!("No socket yet")
+            NoSock => panic!("No socket yet")
         }
     }
 
@@ -52,7 +55,7 @@ impl Writer for XmppSocket {
         match *self {
             Tcp(ref mut stream) => stream.flush(),
             Tls(ref mut stream) => stream.flush(),
-            NoSock => fail!("No socket yet")
+            NoSock => panic!("No socket yet")
         }
     }
 }
@@ -62,7 +65,7 @@ impl ReadString for XmppSocket {
         match *self {
             Tcp(ref mut stream) => stream.read_str(),
             Tls(ref mut stream) => stream.read_str(),
-            NoSock => fail!("Tried to read string before socket exists")
+            NoSock => panic!("Tried to read string before socket exists")
         }
     }
 }
@@ -99,7 +102,7 @@ impl<'a> XmppStream<'a> {
     pub fn connect(&mut self) -> IoResult<()> {
         let stream = {
             let address = self.handler.domain.as_slice();
-            try!(TcpStream::connect(address, 5222))
+            try!(TcpStream::connect((address,5222)))
         };
 
         self.handler.socket = Tcp(BufferedStream::new(stream));
@@ -118,7 +121,7 @@ impl<'a> XmppStream<'a> {
             self.parser.feed_str(string.as_slice());
             for event in self.parser {
                 match event {
-                    Ok(xml::ElementStart(xml::StartTag {
+                    Ok(xml::Event::ElementStart(xml::StartTag {
                         name: ref name,
                         ns: Some(ref ns),
                         prefix: ref prefix, ..
@@ -133,7 +136,7 @@ impl<'a> XmppStream<'a> {
                             None => ()
                         }
                     }
-                    Ok(xml::ElementEnd(xml::EndTag {
+                    Ok(xml::Event::ElementEnd(xml::EndTag {
                         name: ref name,
                         ns: Some(ref ns), ..
                     })) if name.as_slice() == "stream" && ns.as_slice() == ns::STREAMS => {
@@ -227,7 +230,7 @@ impl<'a> XmppHandler<'a> {
                         self.socket = Tls(BufferedStream::new(ssl));
                         return self.start_stream();
                     }
-                    _ => fail!("No socket, or TLS already negotiated")
+                    _ => panic!("No socket, or TLS already negotiated")
                 }
             }
 
