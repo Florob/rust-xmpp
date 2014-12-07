@@ -9,10 +9,13 @@ use std::str;
 use super::Authenticator;
 use openssl::crypto::rand::rand_bytes;
 use openssl::crypto::hmac::HMAC;
-use openssl::crypto::hash::{Hasher, SHA1};
+use openssl::crypto::hash::Hasher;
+use openssl::crypto::hash::HashType::SHA1;
 use openssl::crypto::pkcs5::pbkdf2_hmac_sha1;
 use serialize::base64;
 use serialize::base64::{FromBase64, ToBase64};
+
+pub use self::State::{ Initial,WaitFirst,WaitFinal,Finished};
 
 macro_rules! check(
     ($e:expr, $s:expr) => (match $e { Some(s) => s, None => return Err($s) })
@@ -51,7 +54,7 @@ fn hmac_sha1(key: &[u8], data: &[u8]) -> Vec<u8> {
 }
 
 fn sha1(data: &[u8]) -> Vec<u8> {
-    let sha1 = Hasher::new(SHA1);
+    let mut sha1 = Hasher::new(SHA1);
     sha1.update(data);
     sha1.finalize()
 }

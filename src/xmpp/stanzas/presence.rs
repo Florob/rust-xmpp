@@ -6,6 +6,7 @@
 
 use xml;
 use ns;
+pub use self::PresenceType::{Error,Probe,Subscribe,Subscribed,Unavailable,Unsubscribe,Unsubscribed,Available};
 
 use super::Stanza;
 

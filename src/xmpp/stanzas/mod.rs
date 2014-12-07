@@ -13,6 +13,7 @@ pub use self::message::Message;
 pub use self::message::MessageType;
 pub use self::presence::Presence;
 pub use self::presence::PresenceType;
+pub use self::AStanza::{IqStanza,MessageStanza,PresenceStanza};
 
 pub trait Stanza<Type> {
     fn from_element(e: xml::Element) -> Result<Self, xml::Element>;

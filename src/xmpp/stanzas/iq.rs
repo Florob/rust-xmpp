@@ -6,6 +6,7 @@
 
 use xml;
 use ns;
+pub use self::IqType::{Set,Get,Result,Error};
 
 use super::Stanza;
 

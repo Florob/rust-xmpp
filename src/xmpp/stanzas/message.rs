@@ -6,6 +6,7 @@
 
 use xml;
 use ns;
+pub use self::MessageType::{Normal,Headline,Chat,Groupchat,Error};
 
 use super::Stanza;
 
