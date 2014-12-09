@@ -22,11 +22,11 @@ pub struct Message { elem: xml::Element }
 impl_Stanza!("message", Message, MessageType,
     |ty: &str| {
         match ty {
-            "headline" => Some(Headline),
-            "chat" => Some(Chat),
-            "groupchat" => Some(Groupchat),
-            "error" => Some(Error),
+            "headline" => Some(MessageType::Headline),
+            "chat" => Some(MessageType::Chat),
+            "groupchat" => Some(MessageType::Groupchat),
+            "error" => Some(MessageType::Error),
             _ => None
         }
     }
-, Some(Normal))
+, Some(MessageType::Normal))

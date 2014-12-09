@@ -5,26 +5,27 @@
 // Please see the COPYING file for more information.
 
 use xml::Element;
-use std::str::{MaybeOwned, Slice, Owned};
+use std::str::CowString;
+use std::borrow::IntoCow;
 
 pub trait XmppSend {
-    fn xmpp_str<'a>(&'a self) -> MaybeOwned<'a>;
+    fn xmpp_str<'a>(&'a self) -> CowString<'a>;
 }
 
 impl<'s> XmppSend for &'s str {
-    fn xmpp_str<'a>(&'a self) -> MaybeOwned<'a> {
-        Slice(*self)
+    fn xmpp_str<'a>(&'a self) -> CowString<'a> {
+        self.into_cow()
     }
 }
 
 impl XmppSend for String {
-    fn xmpp_str<'a>(&'a self) -> MaybeOwned<'a> {
-        Slice(self.as_slice())
+    fn xmpp_str<'a>(&'a self) -> CowString<'a> {
+        self.as_slice().into_cow()
     }
 }
 
 impl XmppSend for Element {
-    fn xmpp_str<'a>(&'a self) -> MaybeOwned<'a> {
-        Owned(format!("{}", *self))
+    fn xmpp_str<'a>(&'a self) -> CowString<'a> {
+        (format!("{}", *self)).into_cow()
     }
 }

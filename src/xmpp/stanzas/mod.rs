@@ -17,7 +17,7 @@ pub use self::presence::PresenceType;
 pub trait Stanza<Type> {
     fn from_element(e: xml::Element) -> Result<Self, xml::Element>;
     fn as_element(&self) -> &xml::Element;
-    fn unwrap(self) -> xml::Element;
+    fn into_inner(self) -> xml::Element;
     fn get_to(&self) -> Option<&str>;
     fn get_from(&self) -> Option<&str>;
     fn get_id(&self) -> Option<&str>;
@@ -45,7 +45,7 @@ macro_rules! impl_Stanza(
                 &self.elem
             }
 
-            fn unwrap(self) -> xml::Element {
+            fn into_inner(self) -> xml::Element {
                 self.elem
             }
 
@@ -91,9 +91,9 @@ impl AStanza {
         }
 
         match e.name.as_slice() {
-            "iq" => Ok(IqStanza(Stanza::from_element(e).unwrap())),
-            "message" => Ok(MessageStanza(Stanza::from_element(e).unwrap())),
-            "presence" => Ok(PresenceStanza(Stanza::from_element(e).unwrap())),
+            "iq" => Ok(AStanza::IqStanza(Stanza::from_element(e).unwrap())),
+            "message" => Ok(AStanza::MessageStanza(Stanza::from_element(e).unwrap())),
+            "presence" => Ok(AStanza::PresenceStanza(Stanza::from_element(e).unwrap())),
             _ => Err(e)
         }
     }

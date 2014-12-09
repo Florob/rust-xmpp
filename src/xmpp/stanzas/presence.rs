@@ -25,14 +25,14 @@ pub struct Presence { elem: xml::Element }
 impl_Stanza!("presence", Presence, PresenceType,
     |ty: &str| {
         match ty {
-            "error" => Some(Error),
-            "probe" => Some(Probe),
-            "subscribe" => Some(Subscribe),
-            "subscribed" => Some(Subscribed),
-            "unavailable" => Some(Unavailable),
-            "unsubscribe" => Some(Unsubscribe),
-            "unsubscribed" => Some(Unsubscribed),
+            "error" => Some(PresenceType::Error),
+            "probe" => Some(PresenceType::Probe),
+            "subscribe" => Some(PresenceType::Subscribe),
+            "subscribed" => Some(PresenceType::Subscribed),
+            "unavailable" => Some(PresenceType::Unavailable),
+            "unsubscribe" => Some(PresenceType::Unsubscribe),
+            "unsubscribed" => Some(PresenceType::Unsubscribed),
             _ => None
         }
     }
-, Some(Available))
+, Some(PresenceType::Available))

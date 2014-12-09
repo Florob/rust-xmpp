@@ -20,7 +20,7 @@ use std::io::BufferedStream;
 use std::io::{IoResult, IoError, OtherIoError};
 use serialize::base64;
 use serialize::base64::{FromBase64, ToBase64};
-use openssl::ssl::{SslContext, SslStream, Sslv23};
+use openssl::ssl::{SslContext, SslStream, SslMethod};
 
 use read_str::ReadString;
 use xmpp_send::XmppSend;
@@ -42,17 +42,17 @@ enum XmppSocket {
 impl Writer for XmppSocket {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         match *self {
-            Tcp(ref mut stream) => stream.write(buf),
-            Tls(ref mut stream) => stream.write(buf),
-            NoSock => fail!("No socket yet")
+            XmppSocket::Tcp(ref mut stream) => stream.write(buf),
+            XmppSocket::Tls(ref mut stream) => stream.write(buf),
+            XmppSocket::NoSock => panic!("No socket yet")
         }
     }
 
     fn flush(&mut self) -> IoResult<()> {
         match *self {
-            Tcp(ref mut stream) => stream.flush(),
-            Tls(ref mut stream) => stream.flush(),
-            NoSock => fail!("No socket yet")
+            XmppSocket::Tcp(ref mut stream) => stream.flush(),
+            XmppSocket::Tls(ref mut stream) => stream.flush(),
+            XmppSocket::NoSock => panic!("No socket yet")
         }
     }
 }
@@ -60,9 +60,9 @@ impl Writer for XmppSocket {
 impl ReadString for XmppSocket {
     fn read_str(&mut self) -> IoResult<String> {
         match *self {
-            Tcp(ref mut stream) => stream.read_str(),
-            Tls(ref mut stream) => stream.read_str(),
-            NoSock => fail!("Tried to read string before socket exists")
+            XmppSocket::Tcp(ref mut stream) => stream.read_str(),
+            XmppSocket::Tls(ref mut stream) => stream.read_str(),
+            XmppSocket::NoSock => panic!("Tried to read string before socket exists")
         }
     }
 }
@@ -90,7 +90,7 @@ impl<'a> XmppStream<'a> {
                 username: user.to_string(),
                 password: password.to_string(),
                 domain: domain.to_string(),
-                socket: NoSock,
+                socket: XmppSocket::NoSock,
                 authenticator: None
             }
         }
@@ -99,10 +99,10 @@ impl<'a> XmppStream<'a> {
     pub fn connect(&mut self) -> IoResult<()> {
         let stream = {
             let address = self.handler.domain.as_slice();
-            try!(TcpStream::connect(address, 5222))
+            try!(TcpStream::connect((address, 5222)))
         };
 
-        self.handler.socket = Tcp(BufferedStream::new(stream));
+        self.handler.socket = XmppSocket::Tcp(BufferedStream::new(stream));
         self.handler.start_stream()
     }
 
@@ -118,10 +118,10 @@ impl<'a> XmppStream<'a> {
             self.parser.feed_str(string.as_slice());
             for event in self.parser {
                 match event {
-                    Ok(xml::ElementStart(xml::StartTag {
-                        name: ref name,
+                    Ok(xml::Event::ElementStart(xml::StartTag {
+                        ref name,
                         ns: Some(ref ns),
-                        prefix: ref prefix, ..
+                        ref prefix, ..
                     })) if name.as_slice() == "stream" && ns.as_slice() == ns::STREAMS => {
                         println!("In: Stream start");
                         match *prefix {
@@ -133,8 +133,8 @@ impl<'a> XmppStream<'a> {
                             None => ()
                         }
                     }
-                    Ok(xml::ElementEnd(xml::EndTag {
-                        name: ref name,
+                    Ok(xml::Event::ElementEnd(xml::EndTag {
+                        ref name,
                         ns: Some(ref ns), ..
                     })) if name.as_slice() == "stream" && ns.as_slice() == ns::STREAMS => {
                         println!("In: Stream end");
@@ -179,7 +179,7 @@ impl<'a> XmppHandler<'a> {
         println!("In: {}", *stanza)
         match stanza {
             &xml::Element {
-                name: ref name,
+                ref name,
                 ns: Some(ref ns), ..
             } if name.as_slice() == "features" && ns.as_slice() == ns::STREAMS => {
                 // StartTLS
@@ -202,13 +202,13 @@ impl<'a> XmppHandler<'a> {
             }
 
             &xml::Element {
-                name: ref name,
+                ref name,
                 ns: Some(ref ns), ..
             } if name.as_slice() == "proceed" && ns.as_slice() == ns::FEATURE_TLS => {
-                let socket = mem::replace(&mut self.socket, NoSock);
+                let socket = mem::replace(&mut self.socket, XmppSocket::NoSock);
                 match socket {
-                    Tcp(sock) => {
-                        let ctx = match SslContext::new(Sslv23) {
+                    XmppSocket::Tcp(sock) => {
+                        let ctx = match SslContext::new(SslMethod::Sslv23) {
                             Ok(ctx) => ctx,
                             Err(_) => return Err(IoError {
                                 kind: OtherIoError,
@@ -216,7 +216,7 @@ impl<'a> XmppHandler<'a> {
                                 detail: None
                             })
                         };
-                        let ssl = match SslStream::new(&ctx, sock.unwrap()) {
+                        let ssl = match SslStream::new(&ctx, sock.into_inner()) {
                             Ok(ssl) => ssl,
                             Err(_) => return Err(IoError {
                                 kind: OtherIoError,
@@ -224,15 +224,15 @@ impl<'a> XmppHandler<'a> {
                                 detail: None
                             })
                         };
-                        self.socket = Tls(BufferedStream::new(ssl));
+                        self.socket = XmppSocket::Tls(BufferedStream::new(ssl));
                         return self.start_stream();
                     }
-                    _ => fail!("No socket, or TLS already negotiated")
+                    _ => panic!("No socket, or TLS already negotiated")
                 }
             }
 
             &xml::Element {
-                name: ref name,
+                ref name,
                 ns: Some(ref ns), ..
             } if name.as_slice() == "challenge" && ns.as_slice() == ns::FEATURE_SASL => {
                 let challenge = match stanza.content_str().as_slice().from_base64() {
@@ -257,7 +257,7 @@ impl<'a> XmppHandler<'a> {
             }
 
             &xml::Element {
-                name: ref name,
+                ref name,
                 ns: Some(ref ns), ..
             } if name.as_slice() == "success" && ns.as_slice() == ns::FEATURE_SASL => {
                 let success = match stanza.content_str().as_slice().from_base64() {

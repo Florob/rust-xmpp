@@ -21,10 +21,10 @@ pub struct Iq { elem: xml::Element }
 impl_Stanza!("iq", Iq, IqType,
     |ty: &str| {
         match ty {
-            "get" => Some(Get),
-            "set" => Some(Set),
-            "result" => Some(Result),
-            "error" => Some(Error),
+            "get" => Some(IqType::Get),
+            "set" => Some(IqType::Set),
+            "result" => Some(IqType::Result),
+            "error" => Some(IqType::Error),
             _ => None
         }
     }

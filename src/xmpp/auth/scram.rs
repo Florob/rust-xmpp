@@ -9,7 +9,7 @@ use std::str;
 use super::Authenticator;
 use openssl::crypto::rand::rand_bytes;
 use openssl::crypto::hmac::HMAC;
-use openssl::crypto::hash::{Hasher, SHA1};
+use openssl::crypto::hash::{Hasher, HashType};
 use openssl::crypto::pkcs5::pbkdf2_hmac_sha1;
 use serialize::base64;
 use serialize::base64::{FromBase64, ToBase64};
@@ -45,13 +45,13 @@ fn gen_nonce() -> Vec<u8> {
 }
 
 fn hmac_sha1(key: &[u8], data: &[u8]) -> Vec<u8> {
-    let mut hmac = HMAC(SHA1, key);
+    let mut hmac = HMAC(HashType::SHA1, key);
     hmac.update(data);
     hmac.finalize()
 }
 
 fn sha1(data: &[u8]) -> Vec<u8> {
-    let sha1 = Hasher::new(SHA1);
+    let mut sha1 = Hasher::new(HashType::SHA1);
     sha1.update(data);
     sha1.finalize()
 }
@@ -93,7 +93,7 @@ impl ScramAuth {
 
         {
             let cnonce = match self.state {
-                WaitFirst(ref c, _) => c,
+                State::WaitFirst(ref c, _) => c,
                 _ => unreachable!()
             };
 
@@ -126,7 +126,7 @@ impl ScramAuth {
         let mut auth_message = Vec::new();
         {
             let client_first_message_bare = match self.state {
-                WaitFirst(_, ref c) => c,
+                State::WaitFirst(_, ref c) => c,
                 _ => unreachable!()
             };
             auth_message.push_all(client_first_message_bare.as_bytes());
@@ -157,7 +157,7 @@ impl ScramAuth {
         result.push_all(b",p=");
         result.push_all(client_proof.as_slice().to_base64(base64::STANDARD).as_bytes());
 
-        self.state = WaitFinal(server_signature);
+        self.state = State::WaitFinal(server_signature);
 
         Ok(result)
     }
@@ -171,13 +171,13 @@ impl ScramAuth {
 
         {
             let server_signature = match self.state {
-                WaitFinal(ref s) => s,
+                State::WaitFinal(ref s) => s,
                 _ => unreachable!()
             };
             if *server_signature != verifier { return Err("SCRAM: Server sent invalid verifier"); }
         }
 
-        self.state = Finished;
+        self.state = State::Finished;
 
         Ok(Vec::new())
     }
@@ -189,7 +189,7 @@ impl Authenticator for ScramAuth {
             authcid: authcid.to_string(),
             passwd: passwd.to_string(),
             authzid: authzid.map(|x| x.to_string()),
-            state: Initial
+            state: State::Initial
         }
     }
 
@@ -207,23 +207,23 @@ impl Authenticator for ScramAuth {
         ret.push_all(gs2header.as_bytes());
         ret.push_all(client_first_message_bare.as_bytes());
 
-        self.state = WaitFirst(cnonce, client_first_message_bare);
+        self.state = State::WaitFirst(cnonce, client_first_message_bare);
 
         ret
     }
 
     fn continuation(&mut self, data: &[u8]) -> Result<Vec<u8>, &'static str> {
         match self.state {
-            Initial => {
+            State::Initial => {
                 Ok(self.initial())
             }
-            WaitFirst(..) => {
+            State::WaitFirst(..) => {
                 self.handle_server_first(data)
             }
-            WaitFinal(_) => {
+            State::WaitFinal(_) => {
                 self.handle_server_final(data)
             }
-            Finished => {
+            State::Finished => {
                 Ok(Vec::new())
             }
         }
