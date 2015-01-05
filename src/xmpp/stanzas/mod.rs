@@ -14,19 +14,22 @@ pub use self::message::MessageType;
 pub use self::presence::Presence;
 pub use self::presence::PresenceType;
 
-pub trait Stanza<Type> {
+pub trait Stanza {
+    type Ty;
+
     fn from_element(e: xml::Element) -> Result<Self, xml::Element>;
     fn as_element(&self) -> &xml::Element;
     fn into_inner(self) -> xml::Element;
     fn get_to(&self) -> Option<&str>;
     fn get_from(&self) -> Option<&str>;
     fn get_id(&self) -> Option<&str>;
-    fn get_type(&self) -> Option<Type>;
+    fn get_type(&self) -> Option< <Self as Stanza>::Ty>;
 }
 
 macro_rules! impl_Stanza(
     ($name: expr, $kind: ident, $ty: ty, $ty_some: expr, $ty_none: expr) => (
-        impl Stanza<$ty> for $kind {
+        impl Stanza for $kind {
+            type Ty = $ty;
             fn from_element(e: xml::Element) -> ::std::result::Result<$kind, xml::Element> {
                 match e.ns {
                     Some(ref ns) if ns.as_slice() == ns::JABBER_CLIENT
@@ -69,7 +72,7 @@ macro_rules! impl_Stanza(
             }
         }
     );
-)
+);
 
 // Has to be after impl_Stanza!
 mod iq;

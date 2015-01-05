@@ -7,9 +7,11 @@
 #![crate_name = "xmpp"]
 #![crate_type = "lib"]
 
+#![feature(associated_types)]
 #![feature(macro_rules)]
 
 extern crate serialize;
+extern crate unicode;
 
 extern crate xml;
 extern crate openssl;
@@ -176,7 +178,7 @@ impl<'a> XmppHandler<'a> {
     }
 
     fn handle_stanza(&mut self, stanza: &xml::Element) -> IoResult<()> {
-        println!("In: {}", *stanza)
+        println!("In: {}", *stanza);
         match stanza {
             &xml::Element {
                 ref name,
@@ -288,14 +290,14 @@ impl<'a> XmppHandler<'a> {
             let mech = mech.content_str();
             match mech.as_slice() {
                 "SCRAM-SHA-1" => {
-                    let auth: ScramAuth = Authenticator::new(self.username.as_slice(),
-                                                             self.password.as_slice(), None);
-                    self.authenticator = Some(box auth as Box<Authenticator>);
+                    let auth = box ScramAuth::new(self.username.as_slice(),
+                                                  self.password.as_slice(), None);
+                    self.authenticator = Some(auth as Box<Authenticator>);
                 }
                 "PLAIN" => {
-                    let auth: PlainAuth = Authenticator::new(self.username.as_slice(),
-                                                             self.password.as_slice(), None);
-                    self.authenticator = Some(box auth as Box<Authenticator>);
+                    let auth = box PlainAuth::new(self.username.as_slice(),
+                                                  self.password.as_slice(), None);
+                    self.authenticator = Some(auth as Box<Authenticator>);
                 }
                 _ => continue
             }

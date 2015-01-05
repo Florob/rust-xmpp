@@ -9,6 +9,7 @@ use ns;
 
 use super::Stanza;
 
+#[derive(Copy)]
 pub enum MessageType {
     Normal,
     Headline,
@@ -29,4 +30,4 @@ impl_Stanza!("message", Message, MessageType,
             _ => None
         }
     }
-, Some(MessageType::Normal))
+, Some(MessageType::Normal));

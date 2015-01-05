@@ -9,6 +9,7 @@ use ns;
 
 use super::Stanza;
 
+#[derive(Copy)]
 pub enum PresenceType {
     Error,
     Probe,
@@ -35,4 +36,4 @@ impl_Stanza!("presence", Presence, PresenceType,
             _ => None
         }
     }
-, Some(PresenceType::Available))
+, Some(PresenceType::Available));

@@ -4,10 +4,11 @@
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
 
-use std::str;
 use std::io::IoResult;
 use std::io::BufferedStream;
 use std::io::{Buffer, Stream};
+use std::str;
+use unicode::str::utf8_char_width;
 
 pub trait ReadString {
     fn read_str(&mut self) -> IoResult<String>;
@@ -20,7 +21,7 @@ impl<S: Stream> ReadString for BufferedStream<S> {
             let len = available.len();
             let mut last = if len < 3 { 0 } else { len - 3 };
             while last < len {
-                let width = str::utf8_char_width(available[last]);
+                let width = utf8_char_width(available[last]);
                 if width == 0 {
                     last += 1;
                     continue;

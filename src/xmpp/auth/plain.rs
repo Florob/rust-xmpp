@@ -12,15 +12,17 @@ pub struct PlainAuth {
     passwd: String
 }
 
-impl Authenticator for PlainAuth {
-    fn new(authcid: &str, passwd: &str, authzid: Option<&str>) -> PlainAuth {
+impl PlainAuth {
+    pub fn new(authcid: &str, passwd: &str, authzid: Option<&str>) -> PlainAuth {
         PlainAuth {
             authcid: authcid.to_string(),
             passwd: passwd.to_string(),
             authzid: authzid.map(|x| x.to_string())
         }
     }
+}
 
+impl Authenticator for PlainAuth {
     fn initial(&mut self) -> Vec<u8> {
         let mut data: Vec<u8> = Vec::new();
         for authzid in self.authzid.iter() {

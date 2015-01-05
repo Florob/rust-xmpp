@@ -16,7 +16,7 @@ use serialize::base64::{FromBase64, ToBase64};
 
 macro_rules! check(
     ($e:expr, $s:expr) => (match $e { Some(s) => s, None => return Err($s) })
-)
+);
 
 enum State {
     Initial,
@@ -70,7 +70,7 @@ fn parse_server_first(data: &str) -> Result<(String, Vec<u8>, uint), &'static st
                 s => s
             };
         } else if sub.starts_with("i=") {
-            iter = match from_str(sub.slice_from(2)) {
+            iter = match sub.slice_from(2).parse() {
                 None => break,
                 it => it,
             };
@@ -87,8 +87,17 @@ fn parse_server_first(data: &str) -> Result<(String, Vec<u8>, uint), &'static st
 }
 
 impl ScramAuth {
+    pub fn new(authcid: &str, passwd: &str, authzid: Option<&str>) -> ScramAuth {
+        ScramAuth {
+            authcid: authcid.to_string(),
+            passwd: passwd.to_string(),
+            authzid: authzid.map(|x| x.to_string()),
+            state: State::Initial
+        }
+    }
+
     fn handle_server_first(&mut self, data: &[u8]) -> Result<Vec<u8>, &'static str> {
-        let data = check!(str::from_utf8(data), "SCRAM: Server sent non-UTF-8 data");
+        let data = check!(str::from_utf8(data).ok(), "SCRAM: Server sent non-UTF-8 data");
         let (nonce, salt, iter) = try!(parse_server_first(data));
 
         {
@@ -163,7 +172,7 @@ impl ScramAuth {
     }
 
     fn handle_server_final(&mut self, data: &[u8]) -> Result<Vec<u8>, &'static str> {
-        let data = check!(str::from_utf8(data), "SCRAM: Server sent non-UTF-8 data");
+        let data = check!(str::from_utf8(data).ok(), "SCRAM: Server sent non-UTF-8 data");
         if !data.starts_with("v=") { return Err("SCRAM: Server didn't sent a verifier") }
 
         let verifier = check!(data.slice_from(2).from_base64().ok(),
@@ -184,15 +193,6 @@ impl ScramAuth {
 }
 
 impl Authenticator for ScramAuth {
-    fn new(authcid: &str, passwd: &str, authzid: Option<&str>) -> ScramAuth {
-        ScramAuth {
-            authcid: authcid.to_string(),
-            passwd: passwd.to_string(),
-            authzid: authzid.map(|x| x.to_string()),
-            state: State::Initial
-        }
-    }
-
     fn initial(&mut self) -> Vec<u8> {
         let gs2header = match self.authzid {
             Some(ref a) => format!("n,a={},", a),

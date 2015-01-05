@@ -5,7 +5,7 @@
 // Please see the COPYING file for more information.
 
 use xml::Element;
-use std::str::CowString;
+use std::string::CowString;
 use std::borrow::IntoCow;
 
 pub trait XmppSend {

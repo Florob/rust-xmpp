@@ -9,6 +9,7 @@ use ns;
 
 use super::Stanza;
 
+#[derive(Copy)]
 pub enum IqType {
     Set,
     Get,
@@ -28,4 +29,4 @@ impl_Stanza!("iq", Iq, IqType,
             _ => None
         }
     }
-, None)
+, None);
