@@ -21,7 +21,7 @@ pub enum MessageType {
 pub struct Message { elem: xml::Element }
 
 impl_Stanza!("message", Message, MessageType,
-    |ty: &str| {
+    |: ty: &str| {
         match ty {
             "headline" => Some(MessageType::Headline),
             "chat" => Some(MessageType::Chat),

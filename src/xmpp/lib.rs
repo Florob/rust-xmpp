@@ -7,14 +7,10 @@
 #![crate_name = "xmpp"]
 #![crate_type = "lib"]
 
-#![feature(associated_types)]
-#![feature(macro_rules)]
-
-extern crate serialize;
 extern crate unicode;
-
-extern crate xml;
+extern crate "rustc-serialize" as serialize;
 extern crate openssl;
+extern crate xml;
 
 use std::mem;
 use std::io::net::tcp::TcpStream;
@@ -100,7 +96,7 @@ impl<'a> XmppStream<'a> {
 
     pub fn connect(&mut self) -> IoResult<()> {
         let stream = {
-            let address = self.handler.domain.as_slice();
+            let address = &self.handler.domain[];
             try!(TcpStream::connect((address, 5222)))
         };
 
@@ -117,28 +113,31 @@ impl<'a> XmppStream<'a> {
             };
             let builder = &mut self.builder;
             let handler = &mut self.handler;
-            self.parser.feed_str(string.as_slice());
+            self.parser.feed_str(&string[]);
             for event in self.parser {
                 match event {
                     Ok(xml::Event::ElementStart(xml::StartTag {
                         ref name,
                         ns: Some(ref ns),
                         ref prefix, ..
-                    })) if name.as_slice() == "stream" && ns.as_slice() == ns::STREAMS => {
+                    })) if &name[] == "stream" && &ns[] == ns::STREAMS => {
                         println!("In: Stream start");
                         match *prefix {
                             Some(ref prefix) => {
                                 *builder = xml::ElementBuilder::new();
                                 builder.set_default_ns(ns::JABBER_CLIENT);
-                                builder.define_prefix(prefix.as_slice(), ns::STREAMS);
+                                builder.define_prefix(&prefix[], ns::STREAMS);
                             }
-                            None => ()
+                            None => {
+                                *builder = xml::ElementBuilder::new();
+                                builder.set_default_ns(ns::STREAMS);
+                            }
                         }
                     }
                     Ok(xml::Event::ElementEnd(xml::EndTag {
                         ref name,
                         ns: Some(ref ns), ..
-                    })) if name.as_slice() == "stream" && ns.as_slice() == ns::STREAMS => {
+                    })) if &name[] == "stream" && &ns[] == ns::STREAMS => {
                         println!("In: Stream end");
                         try!(handler.close_stream());
                         closed = true;
@@ -173,7 +172,7 @@ impl<'a> XmppHandler<'a> {
     fn send<T: XmppSend>(&mut self, data: T) -> IoResult<()> {
         let data = data.xmpp_str();
         println!("Out: {}", data);
-        try!(self.socket.write(data.as_slice().as_bytes()));
+        try!(self.socket.write(data.as_bytes()));
         self.socket.flush()
     }
 
@@ -183,7 +182,7 @@ impl<'a> XmppHandler<'a> {
             &xml::Element {
                 ref name,
                 ns: Some(ref ns), ..
-            } if name.as_slice() == "features" && ns.as_slice() == ns::STREAMS => {
+            } if &name[] == "features" && &ns[] == ns::STREAMS => {
                 // StartTLS
                 let starttls = stanza.get_child("starttls", Some(ns::FEATURE_TLS));
                 if starttls.is_some() {
@@ -206,7 +205,7 @@ impl<'a> XmppHandler<'a> {
             &xml::Element {
                 ref name,
                 ns: Some(ref ns), ..
-            } if name.as_slice() == "proceed" && ns.as_slice() == ns::FEATURE_TLS => {
+            } if &name[] == "proceed" && &ns[] == ns::FEATURE_TLS => {
                 let socket = mem::replace(&mut self.socket, XmppSocket::NoSock);
                 match socket {
                     XmppSocket::Tcp(sock) => {
@@ -236,15 +235,15 @@ impl<'a> XmppHandler<'a> {
             &xml::Element {
                 ref name,
                 ns: Some(ref ns), ..
-            } if name.as_slice() == "challenge" && ns.as_slice() == ns::FEATURE_SASL => {
-                let challenge = match stanza.content_str().as_slice().from_base64() {
+            } if &name[] == "challenge" && &ns[] == ns::FEATURE_SASL => {
+                let challenge = match stanza.content_str()[].from_base64() {
                     Ok(c) => c,
                     Err(_) => return Ok(())
                 };
 
                 let result = {
                     let auth = self.authenticator.as_mut().unwrap();
-                    match auth.continuation(challenge.as_slice()) {
+                    match auth.continuation(&challenge[]) {
                         Ok(r) => r,
                         Err(e) => {
                             println!("{}", e);
@@ -253,7 +252,7 @@ impl<'a> XmppHandler<'a> {
                     }
                 };
 
-                let data = result.as_slice().to_base64(base64::STANDARD);
+                let data = result[].to_base64(base64::STANDARD);
                 return self.send(format!("<response xmlns='{}'>{}</response>",
                                           ns::FEATURE_SASL, data));
             }
@@ -261,14 +260,14 @@ impl<'a> XmppHandler<'a> {
             &xml::Element {
                 ref name,
                 ns: Some(ref ns), ..
-            } if name.as_slice() == "success" && ns.as_slice() == ns::FEATURE_SASL => {
-                let success = match stanza.content_str().as_slice().from_base64() {
+            } if &name[] == "success" && &ns[] == ns::FEATURE_SASL => {
+                let success = match stanza.content_str().from_base64() {
                     Ok(c) => c,
                     Err(_) => return Ok(())
                 };
                 {
                     let auth = self.authenticator.as_mut().unwrap();
-                    match auth.continuation(success.as_slice()) {
+                    match auth.continuation(&success[]) {
                         Ok(_) => (),
                         Err(e) => {
                             println!("{}", e);
@@ -288,23 +287,22 @@ impl<'a> XmppHandler<'a> {
 
         for mech in mechs.iter() {
             let mech = mech.content_str();
-            match mech.as_slice() {
+            let auth = match &mech[] {
                 "SCRAM-SHA-1" => {
-                    let auth = box ScramAuth::new(self.username.as_slice(),
-                                                  self.password.as_slice(), None);
-                    self.authenticator = Some(auth as Box<Authenticator>);
+                    Box::new(ScramAuth::new(&self.username[],
+                                            &self.password[], None)) as Box<Authenticator>
                 }
                 "PLAIN" => {
-                    let auth = box PlainAuth::new(self.username.as_slice(),
-                                                  self.password.as_slice(), None);
-                    self.authenticator = Some(auth as Box<Authenticator>);
+                    Box::new(PlainAuth::new(&self.username[],
+                                            &self.password[], None)) as Box<Authenticator>
                 }
                 _ => continue
-            }
+            };
+            self.authenticator = Some(auth);
 
             let result = {
                 let auth = self.authenticator.as_mut().unwrap();
-                auth.initial().as_slice().to_base64(base64::STANDARD)
+                auth.initial().to_base64(base64::STANDARD)
             };
 
             return self.send(format!("<auth mechanism='{}' xmlns='{}'>{}</auth>",

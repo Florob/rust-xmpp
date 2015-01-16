@@ -32,7 +32,7 @@ impl<S: Stream> ReadString for BufferedStream<S> {
                     break;
                 }
             }
-            (str::from_utf8(available.slice_to(last)).unwrap().to_string(), last)
+            (str::from_utf8(&available[..last]).unwrap().to_string(), last)
         };
         self.consume(last);
 

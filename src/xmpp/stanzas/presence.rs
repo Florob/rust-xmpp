@@ -24,7 +24,7 @@ pub enum PresenceType {
 pub struct Presence { elem: xml::Element }
 
 impl_Stanza!("presence", Presence, PresenceType,
-    |ty: &str| {
+    |: ty: &str| {
         match ty {
             "error" => Some(PresenceType::Error),
             "probe" => Some(PresenceType::Probe),

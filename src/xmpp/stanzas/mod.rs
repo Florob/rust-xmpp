@@ -32,12 +32,12 @@ macro_rules! impl_Stanza(
             type Ty = $ty;
             fn from_element(e: xml::Element) -> ::std::result::Result<$kind, xml::Element> {
                 match e.ns {
-                    Some(ref ns) if ns.as_slice() == ns::JABBER_CLIENT
-                                    || ns.as_slice() == ns::JABBER_SERVER => (),
+                    Some(ref ns) if &ns[] == ns::JABBER_CLIENT
+                                    || &ns[] == ns::JABBER_SERVER => (),
                     _ => return Err(e)
                 }
 
-                if e.name.as_slice() == $name {
+                if &e.name[] == $name {
                     Ok($kind { elem: e })
                 } else {
                     Err(e)
@@ -88,15 +88,15 @@ pub enum AStanza {
 impl AStanza {
     pub fn from_element(e: xml::Element) -> Result<AStanza, xml::Element> {
         match e.ns {
-            Some(ref ns) if ns.as_slice() == ns::JABBER_CLIENT
-                            || ns.as_slice() == ns::JABBER_SERVER => (),
+            Some(ref ns) if &ns[] == ns::JABBER_CLIENT
+                            || &ns[] == ns::JABBER_SERVER => (),
             _ => return Err(e)
         }
 
-        match e.name.as_slice() {
-            "iq" => Ok(AStanza::IqStanza(Stanza::from_element(e).unwrap())),
-            "message" => Ok(AStanza::MessageStanza(Stanza::from_element(e).unwrap())),
-            "presence" => Ok(AStanza::PresenceStanza(Stanza::from_element(e).unwrap())),
+        match &e.name[] {
+            "iq" => Stanza::from_element(e).and_then(|s| Ok(AStanza::IqStanza(s))),
+            "message" => Stanza::from_element(e).and_then(|s| Ok(AStanza::MessageStanza(s))),
+            "presence" => Stanza::from_element(e).and_then(|s| Ok(AStanza::PresenceStanza(s))),
             _ => Err(e)
         }
     }

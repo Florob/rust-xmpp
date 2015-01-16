@@ -10,5 +10,5 @@ fn main() {
             return;
         }
     }
-    println!("{}", stream.handle());
+    println!("{:?}", stream.handle());
 }

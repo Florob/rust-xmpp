@@ -14,7 +14,7 @@ use openssl::crypto::pkcs5::pbkdf2_hmac_sha1;
 use serialize::base64;
 use serialize::base64::{FromBase64, ToBase64};
 
-macro_rules! check(
+macro_rules! check (
     ($e:expr, $s:expr) => (match $e { Some(s) => s, None => return Err($s) })
 );
 
@@ -56,21 +56,20 @@ fn sha1(data: &[u8]) -> Vec<u8> {
     sha1.finalize()
 }
 
-fn parse_server_first(data: &str) -> Result<(String, Vec<u8>, uint), &'static str> {
+fn parse_server_first(data: &str) -> Result<(String, Vec<u8>, u16), &'static str> {
     let mut nonce = None;
     let mut salt = None;
-    let mut iter: Option<uint> = None;
+    let mut iter: Option<u16> = None;
     for  sub in data.split(',') {
         if sub.starts_with("r=") {
-            nonce = Some(sub.slice_from(2).to_string());
+            nonce = Some(sub[2..].to_string());
         } else if sub.starts_with("s=") {
-            let b64salt = sub.slice_from(2);
-            salt = match b64salt.from_base64().ok() {
+            salt = match sub[2..].from_base64().ok() {
                 None => return Err("SCRAM: Invalid base64 encoding for salt"),
                 s => s
             };
         } else if sub.starts_with("i=") {
-            iter = match sub.slice_from(2).parse() {
+            iter = match sub[2..].parse() {
                 None => break,
                 it => it,
             };
@@ -106,26 +105,27 @@ impl ScramAuth {
                 _ => unreachable!()
             };
 
-            if !nonce.as_slice().starts_with(cnonce.as_slice()) {
+            if !nonce.starts_with(&cnonce[]) {
                 return Err("SCRAM: Server replied with invalid nonce")
             }
         }
 
-        let gs2header = match self.authzid {
-            Some(ref a) => format!("n,a={},", a),
-            None => "n,,".to_string()
-        }.as_bytes().to_base64(base64::STANDARD);
+        let gs2header = if let Some(ref authzid) = self.authzid {
+            format!("n,a={},", authzid).as_bytes().to_base64(base64::STANDARD)
+        } else {
+            b"n,,".to_base64(base64::STANDARD)
+        };
 
         let mut result = Vec::new();
         // Add c=<base64(GS2Header+channelBindingData)>
         result.push_all(b"c=");
-        result.push_all(gs2header.as_bytes());
+        result.extend(gs2header.bytes());
         // Add r=<nonce>
         result.push_all(b",r=");
-        result.push_all(nonce.as_bytes());
+        result.extend(nonce.bytes());
 
         // SaltedPassword := Hi(Normalize(password), salt, i)
-        let salted_passwd = pbkdf2_hmac_sha1(self.passwd.as_slice(), salt.as_slice(), iter, 20);
+        let salted_passwd = pbkdf2_hmac_sha1(&self.passwd[], &salt[], iter as usize, 20);
 
         /*
          * AuthMessage := client-first-message-bare + "," +
@@ -138,25 +138,25 @@ impl ScramAuth {
                 State::WaitFirst(_, ref c) => c,
                 _ => unreachable!()
             };
-            auth_message.push_all(client_first_message_bare.as_bytes());
+            auth_message.extend(client_first_message_bare.bytes());
         }
         auth_message.push(',' as u8);
-        auth_message.push_all(data.as_bytes());
+        auth_message.extend(data.bytes());
         auth_message.push(',' as u8);
-        auth_message.push_all(result.as_slice());
+        auth_message.push_all(&result[]);
 
         // ClientKey := HMAC(SaltedPassword, "Client Key")
-        let client_key = hmac_sha1(salted_passwd.as_slice(), b"Client Key");
+        let client_key = hmac_sha1(&salted_passwd[], b"Client Key");
 
         // StoredKey := H(ClientKey)
-        let stored_key = sha1(client_key.as_slice());
+        let stored_key = sha1(&client_key[]);
 
         // ClientSignature := HMAC(StoredKey, AuthMessage)
-        let client_signature = hmac_sha1(stored_key.as_slice(), auth_message.as_slice());
+        let client_signature = hmac_sha1(&stored_key[], &auth_message[]);
         // ServerKey := HMAC(SaltedPassword, "Server Key")
-        let server_key = hmac_sha1(salted_passwd.as_slice(), b"Server Key");
+        let server_key = hmac_sha1(&salted_passwd[], b"Server Key");
         // ServerSignature := HMAC(ServerKey, AuthMessage)
-        let server_signature = hmac_sha1(server_key.as_slice(), auth_message.as_slice());
+        let server_signature = hmac_sha1(&server_key[], &auth_message[]);
         // ClientProof := ClientKey XOR ClientSignature
         let client_proof: Vec<u8> = client_key.iter().zip(client_signature.iter()).map(|(x, y)| {
             *x ^ *y
@@ -164,7 +164,7 @@ impl ScramAuth {
 
         // Add p=<base64(ClientProof)>
         result.push_all(b",p=");
-        result.push_all(client_proof.as_slice().to_base64(base64::STANDARD).as_bytes());
+        result.extend(client_proof.to_base64(base64::STANDARD).bytes());
 
         self.state = State::WaitFinal(server_signature);
 
@@ -175,7 +175,7 @@ impl ScramAuth {
         let data = check!(str::from_utf8(data).ok(), "SCRAM: Server sent non-UTF-8 data");
         if !data.starts_with("v=") { return Err("SCRAM: Server didn't sent a verifier") }
 
-        let verifier = check!(data.slice_from(2).from_base64().ok(),
+        let verifier = check!(data[2..].from_base64().ok(),
                               "SCRAM: Server sent verifier with invalid base64 encoding");
 
         {
@@ -204,8 +204,8 @@ impl Authenticator for ScramAuth {
         let client_first_message_bare = format!("n={},r={}", self.authcid, cnonce);
 
         let mut ret = Vec::new();
-        ret.push_all(gs2header.as_bytes());
-        ret.push_all(client_first_message_bare.as_bytes());
+        ret.extend(gs2header.bytes());
+        ret.extend(client_first_message_bare.bytes());
 
         self.state = State::WaitFirst(cnonce, client_first_message_bare);
 
