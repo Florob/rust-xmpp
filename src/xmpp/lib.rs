@@ -65,22 +65,22 @@ impl ReadString for XmppSocket {
     }
 }
 
-struct XmppHandler<'a> {
+struct XmppHandler {
     username: String,
     password: String,
     domain: String,
     socket: XmppSocket,
-    authenticator: Option<Box<Authenticator + 'a>>
+    authenticator: Option<Box<Authenticator + 'static>>
 }
 
-pub struct XmppStream<'a> {
+pub struct XmppStream {
     parser: xml::Parser,
     builder: xml::ElementBuilder,
-    handler: XmppHandler<'a>
+    handler: XmppHandler
 }
 
-impl<'a> XmppStream<'a> {
-    pub fn new(user: &str, domain: &str, password: &str) -> XmppStream<'a> {
+impl XmppStream {
+    pub fn new(user: &str, domain: &str, password: &str) -> XmppStream {
         XmppStream {
             parser: xml::Parser::new(),
             builder: xml::ElementBuilder::new(),
@@ -157,7 +157,7 @@ impl<'a> XmppStream<'a> {
     }
 }
 
-impl<'a> XmppHandler<'a> {
+impl XmppHandler {
     fn start_stream(&mut self) -> IoResult<()> {
         let start = format!("<?xml version='1.0'?>\n\
                              <stream:stream xmlns:stream='{}' xmlns='{}' version='1.0' to='{}'>",
