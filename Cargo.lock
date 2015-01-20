@@ -3,7 +3,7 @@ name = "rust-xmpp"
 version = "0.0.0"
 dependencies = [
  "RustyXML 0.0.1 (git+https://github.com/Florob/RustyXML)",
- "openssl 0.2.13 (git+https://github.com/sfackler/rust-openssl)",
+ "openssl 0.2.16 (git+https://github.com/sfackler/rust-openssl)",
  "rustc-serialize 0.2.8 (git+https://github.com/rust-lang/rustc-serialize)",
 ]
 
@@ -22,24 +22,24 @@ dependencies = [
 
 [[package]]
 name = "openssl"
-version = "0.2.13"
-source = "git+https://github.com/sfackler/rust-openssl#a73e9820246ce9517fe9d33751c01d2d51d9a235"
+version = "0.2.16"
+source = "git+https://github.com/sfackler/rust-openssl#1a60bccb6a863e9287288439e104a16cdc8c9a68"
 dependencies = [
- "openssl-sys 0.2.13 (git+https://github.com/sfackler/rust-openssl)",
+ "openssl-sys 0.2.16 (git+https://github.com/sfackler/rust-openssl)",
 ]
 
 [[package]]
 name = "openssl-sys"
-version = "0.2.13"
-source = "git+https://github.com/sfackler/rust-openssl#a73e9820246ce9517fe9d33751c01d2d51d9a235"
+version = "0.2.16"
+source = "git+https://github.com/sfackler/rust-openssl#1a60bccb6a863e9287288439e104a16cdc8c9a68"
 dependencies = [
  "libressl-pnacl-sys 2.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "pkg-config 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pkg-config 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "pkg-config"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -50,5 +50,5 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "rustc-serialize"
 version = "0.2.8"
-source = "git+https://github.com/rust-lang/rustc-serialize#3784b3882cae9798837def8a666680ec6321d198"
+source = "git+https://github.com/rust-lang/rustc-serialize#a54089c227c74ae421941e615d010ed31481d25c"
 
