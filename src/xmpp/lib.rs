@@ -7,6 +7,8 @@
 #![crate_name = "xmpp"]
 #![crate_type = "lib"]
 
+#![allow(unstable)]
+
 extern crate unicode;
 extern crate "rustc-serialize" as serialize;
 extern crate openssl;

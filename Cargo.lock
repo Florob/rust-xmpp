@@ -3,52 +3,52 @@ name = "rust-xmpp"
 version = "0.0.0"
 dependencies = [
  "RustyXML 0.0.1 (git+https://github.com/Florob/RustyXML)",
- "openssl 0.2.16 (git+https://github.com/sfackler/rust-openssl)",
- "rustc-serialize 0.2.8 (git+https://github.com/rust-lang/rustc-serialize)",
+ "openssl 0.2.17 (git+https://github.com/sfackler/rust-openssl)",
+ "rustc-serialize 0.2.9 (git+https://github.com/rust-lang/rustc-serialize)",
 ]
 
 [[package]]
 name = "RustyXML"
 version = "0.0.1"
-source = "git+https://github.com/Florob/RustyXML#c6e9fc158f6d5af1f7433c7e59c1c87f0ce753ca"
+source = "git+https://github.com/Florob/RustyXML#dd899d5f5b82e3a05c969925339fb64c6228672c"
 
 [[package]]
 name = "libressl-pnacl-sys"
 version = "2.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "pnacl-build-helper 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pnacl-build-helper 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "openssl"
-version = "0.2.16"
-source = "git+https://github.com/sfackler/rust-openssl#1a60bccb6a863e9287288439e104a16cdc8c9a68"
+version = "0.2.17"
+source = "git+https://github.com/sfackler/rust-openssl#cfe9df78fa5c341671a55a6945dedb91c21af8b6"
 dependencies = [
- "openssl-sys 0.2.16 (git+https://github.com/sfackler/rust-openssl)",
+ "openssl-sys 0.2.17 (git+https://github.com/sfackler/rust-openssl)",
 ]
 
 [[package]]
 name = "openssl-sys"
-version = "0.2.16"
-source = "git+https://github.com/sfackler/rust-openssl#1a60bccb6a863e9287288439e104a16cdc8c9a68"
+version = "0.2.17"
+source = "git+https://github.com/sfackler/rust-openssl#cfe9df78fa5c341671a55a6945dedb91c21af8b6"
 dependencies = [
  "libressl-pnacl-sys 2.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "pkg-config 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pkg-config 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "pkg-config"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "pnacl-build-helper"
-version = "1.2.0"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustc-serialize"
-version = "0.2.8"
-source = "git+https://github.com/rust-lang/rustc-serialize#a54089c227c74ae421941e615d010ed31481d25c"
+version = "0.2.9"
+source = "git+https://github.com/rust-lang/rustc-serialize#c4e6e0a5e786af6587edeae474f0272f2e414e97"
 
