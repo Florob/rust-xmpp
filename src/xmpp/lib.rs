@@ -107,8 +107,7 @@ impl XmppStream {
     }
 
     pub fn handle(&mut self) -> IoResult<()> {
-        let mut closed = false;
-        while !closed {
+        'main: loop {
             let string = {
                 let socket = &mut self.handler.socket;
                 try!(socket.read_str())
@@ -122,7 +121,7 @@ impl XmppStream {
                         ref name,
                         ns: Some(ref ns),
                         ref prefix, ..
-                    })) if &name[] == "stream" && &ns[] == ns::STREAMS => {
+                    })) if *name == "stream" && *ns == ns::STREAMS => {
                         println!("In: Stream start");
                         match *prefix {
                             Some(ref prefix) => {
@@ -139,10 +138,10 @@ impl XmppStream {
                     Ok(xml::Event::ElementEnd(xml::EndTag {
                         ref name,
                         ns: Some(ref ns), ..
-                    })) if &name[] == "stream" && &ns[] == ns::STREAMS => {
+                    })) if *name == "stream" && *ns == ns::STREAMS => {
                         println!("In: Stream end");
                         try!(handler.close_stream());
-                        closed = true;
+                        break 'main;
                     }
                     Ok(event) => {
                         match builder.push_event(event) {
@@ -181,106 +180,70 @@ impl XmppHandler {
     fn handle_stanza(&mut self, stanza: &xml::Element) -> IoResult<()> {
         println!("In: {}", *stanza);
         match stanza {
-            &xml::Element {
-                ref name,
-                ns: Some(ref ns), ..
-            } if &name[] == "features" && &ns[] == ns::STREAMS => {
-                // StartTLS
-                let starttls = stanza.get_child("starttls", Some(ns::FEATURE_TLS));
-                if starttls.is_some() {
-                    return self.send(format!("<starttls xmlns='{}'/>", ns::FEATURE_TLS));
-                }
-
-                // Auth mechanisms
-                let mechs = stanza.get_child("mechanisms", Some(ns::FEATURE_SASL));
-                if mechs.is_some() {
-                    return self.handle_mechs(mechs.unwrap());
-                }
-
-                // Bind
-                let bind = stanza.get_child("bind", Some(ns::FEATURE_BIND));
-                if bind.is_some() {
-                    return self.handle_bind();
-                }
+            features if features.name == "features"
+                        && features.ns.as_ref().map(|x| &x[]) == Some(ns::STREAMS) => {
+                return self.handle_features(features);
             }
-
-            &xml::Element {
-                ref name,
-                ns: Some(ref ns), ..
-            } if &name[] == "proceed" && &ns[] == ns::FEATURE_TLS => {
-                let socket = mem::replace(&mut self.socket, XmppSocket::NoSock);
-                match socket {
-                    XmppSocket::Tcp(sock) => {
-                        let ctx = match SslContext::new(SslMethod::Sslv23) {
-                            Ok(ctx) => ctx,
-                            Err(_) => return Err(IoError {
-                                kind: OtherIoError,
-                                desc: "Couldn not create SSL context",
-                                detail: None
-                            })
-                        };
-                        let ssl = match SslStream::new(&ctx, sock.into_inner()) {
-                            Ok(ssl) => ssl,
-                            Err(_) => return Err(IoError {
-                                kind: OtherIoError,
-                                desc: "Couldn not create SSL stream",
-                                detail: None
-                            })
-                        };
-                        self.socket = XmppSocket::Tls(BufferedStream::new(ssl));
-                        return self.start_stream();
-                    }
-                    _ => panic!("No socket, or TLS already negotiated")
-                }
+            starttls if starttls.ns.as_ref().map(|x| &x[]) == Some(ns::FEATURE_TLS) => {
+                return self.handle_starttls(starttls);
             }
-
-            &xml::Element {
-                ref name,
-                ns: Some(ref ns), ..
-            } if &name[] == "challenge" && &ns[] == ns::FEATURE_SASL => {
-                let challenge = match stanza.content_str()[].from_base64() {
-                    Ok(c) => c,
-                    Err(_) => return Ok(())
-                };
-
-                let result = {
-                    let auth = self.authenticator.as_mut().unwrap();
-                    match auth.continuation(&challenge[]) {
-                        Ok(r) => r,
-                        Err(e) => {
-                            println!("{}", e);
-                            return Ok(());
-                        }
-                    }
-                };
-
-                let data = result[].to_base64(base64::STANDARD);
-                return self.send(format!("<response xmlns='{}'>{}</response>",
-                                          ns::FEATURE_SASL, data));
-            }
-
-            &xml::Element {
-                ref name,
-                ns: Some(ref ns), ..
-            } if &name[] == "success" && &ns[] == ns::FEATURE_SASL => {
-                let success = match stanza.content_str().from_base64() {
-                    Ok(c) => c,
-                    Err(_) => return Ok(())
-                };
-                {
-                    let auth = self.authenticator.as_mut().unwrap();
-                    match auth.continuation(&success[]) {
-                        Ok(_) => (),
-                        Err(e) => {
-                            println!("{}", e);
-                            return Ok(());
-                        }
-                    }
-                }
-                return self.start_stream();
+            sasl if sasl.ns.as_ref().map(|x| &x[]) == Some(ns::FEATURE_SASL) => {
+                return self.handle_sasl(sasl);
             }
             _ => ()
         }
+        Ok(())
+    }
+
+    fn handle_features(&mut self, features: &xml::Element) -> IoResult<()> {
+        // StartTLS
+        let starttls = features.get_child("starttls", Some(ns::FEATURE_TLS));
+        if starttls.is_some() {
+            return self.send(format!("<starttls xmlns='{}'/>", ns::FEATURE_TLS));
+        }
+
+        // Auth mechanisms
+        let mechs = features.get_child("mechanisms", Some(ns::FEATURE_SASL));
+        if mechs.is_some() {
+            return self.handle_mechs(mechs.unwrap());
+        }
+
+        // Bind
+        let bind = features.get_child("bind", Some(ns::FEATURE_BIND));
+        if bind.is_some() {
+            return self.handle_bind();
+        }
+        Ok(())
+    }
+
+    fn handle_starttls(&mut self, starttls: &xml::Element) -> IoResult<()> {
+        if starttls.name == "proceed" {
+            let socket = mem::replace(&mut self.socket, XmppSocket::NoSock);
+            match socket {
+                XmppSocket::Tcp(sock) => {
+                    let ctx = match SslContext::new(SslMethod::Sslv23) {
+                        Ok(ctx) => ctx,
+                        Err(_) => return Err(IoError {
+                            kind: OtherIoError,
+                            desc: "Couldn not create SSL context",
+                            detail: None
+                        })
+                    };
+                    let ssl = match SslStream::new(&ctx, sock.into_inner()) {
+                        Ok(ssl) => ssl,
+                        Err(_) => return Err(IoError {
+                            kind: OtherIoError,
+                            desc: "Couldn not create SSL stream",
+                            detail: None
+                        })
+                    };
+                    self.socket = XmppSocket::Tls(BufferedStream::new(ssl));
+                    return self.start_stream();
+                }
+                _ => panic!("No socket, or TLS already negotiated")
+            }
+        }
+
         Ok(())
     }
 
@@ -309,6 +272,50 @@ impl XmppHandler {
 
             return self.send(format!("<auth mechanism='{}' xmlns='{}'>{}</auth>",
                                      mech, ns::FEATURE_SASL, result));
+        }
+
+        Ok(())
+    }
+
+    fn handle_sasl(&mut self, sasl: &xml::Element) -> IoResult<()> {
+        if sasl.name == "challenge" {
+            let challenge = match sasl.content_str()[].from_base64() {
+                Ok(c) => c,
+                Err(_) => return Ok(())
+            };
+
+            let result = {
+                let auth = self.authenticator.as_mut().unwrap();
+                match auth.continuation(&challenge[]) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        println!("{}", e);
+                        return Ok(());
+                    }
+                }
+            };
+
+            let data = result[].to_base64(base64::STANDARD);
+            return self.send(format!("<response xmlns='{}'>{}</response>",
+                                     ns::FEATURE_SASL, data));
+        }
+
+        if sasl.name == "success" {
+            let success = match sasl.content_str().from_base64() {
+                Ok(c) => c,
+                Err(_) => return Ok(())
+            };
+            {
+                let auth = self.authenticator.as_mut().unwrap();
+                match auth.continuation(&success[]) {
+                    Ok(_) => (),
+                    Err(e) => {
+                        println!("{}", e);
+                        return Ok(());
+                    }
+                }
+            }
+            return self.start_stream();
         }
 
         Ok(())
