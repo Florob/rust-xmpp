@@ -32,6 +32,6 @@ impl XmppSend for Element {
 
 impl<'a, S: ?Sized + XmppSend> XmppSend for &'a S {
     fn xmpp_str<'b>(&'b self) -> CowString<'b> {
-        self.xmpp_str()
+        (*self).xmpp_str()
     }
 }
