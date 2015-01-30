@@ -4,9 +4,9 @@
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
 
-use std::io::IoResult;
-use std::io::BufferedStream;
-use std::io::{Buffer, Stream};
+use std::old_io::IoResult;
+use std::old_io::BufferedStream;
+use std::old_io::{Buffer, Stream};
 use std::str;
 use unicode::str::utf8_char_width;
 

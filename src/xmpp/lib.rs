@@ -7,7 +7,11 @@
 #![crate_name = "xmpp"]
 #![crate_type = "lib"]
 
-#![allow(unstable)]
+// These are unsable for now
+#![feature(core)]
+#![feature(collections)]
+#![feature(io)]
+#![feature(unicode)]
 
 extern crate unicode;
 extern crate "rustc-serialize" as serialize;
@@ -15,9 +19,9 @@ extern crate openssl;
 extern crate xml;
 
 use std::mem;
-use std::io::net::tcp::TcpStream;
-use std::io::BufferedStream;
-use std::io::{IoResult, IoError, OtherIoError};
+use std::old_io::net::tcp::TcpStream;
+use std::old_io::BufferedStream;
+use std::old_io::{IoResult, IoError, OtherIoError};
 use serialize::base64;
 use serialize::base64::{FromBase64, ToBase64};
 use openssl::ssl::{SslContext, SslStream, SslMethod};
@@ -40,10 +44,10 @@ enum XmppSocket {
 }
 
 impl Writer for XmppSocket {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         match *self {
-            XmppSocket::Tcp(ref mut stream) => stream.write(buf),
-            XmppSocket::Tls(ref mut stream) => stream.write(buf),
+            XmppSocket::Tcp(ref mut stream) => stream.write_all(buf),
+            XmppSocket::Tls(ref mut stream) => stream.write_all(buf),
             XmppSocket::NoSock => panic!("No socket yet")
         }
     }
@@ -173,7 +177,7 @@ impl XmppHandler {
     fn send<T: XmppSend>(&mut self, data: T) -> IoResult<()> {
         let data = data.xmpp_str();
         println!("Out: {}", data);
-        try!(self.socket.write(data.as_bytes()));
+        try!(self.socket.write_all(data.as_bytes()));
         self.socket.flush()
     }
 
