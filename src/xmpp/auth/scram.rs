@@ -8,8 +8,9 @@ use std::str;
 
 use super::Authenticator;
 use openssl::crypto::rand::rand_bytes;
-use openssl::crypto::hmac::HMAC;
-use openssl::crypto::hash::{Hasher, HashType};
+use openssl::crypto::hash::Type::SHA1;
+use openssl::crypto::hash::hash;
+use openssl::crypto::hmac::hmac;
 use openssl::crypto::pkcs5::pbkdf2_hmac_sha1;
 use serialize::base64;
 use serialize::base64::{FromBase64, ToBase64};
@@ -42,18 +43,6 @@ fn gen_nonce() -> Vec<u8> {
         if *c == (',' as u8) { *c = '~' as u8 }
     }
     nonce
-}
-
-fn hmac_sha1(key: &[u8], data: &[u8]) -> Vec<u8> {
-    let mut hmac = HMAC(HashType::SHA1, key);
-    hmac.update(data);
-    hmac.finalize()
-}
-
-fn sha1(data: &[u8]) -> Vec<u8> {
-    let mut sha1 = Hasher::new(HashType::SHA1);
-    sha1.update(data);
-    sha1.finalize()
 }
 
 fn parse_server_first(data: &str) -> Result<(String, Vec<u8>, u16), &'static str> {
@@ -146,17 +135,17 @@ impl ScramAuth {
         auth_message.push_all(&result[]);
 
         // ClientKey := HMAC(SaltedPassword, "Client Key")
-        let client_key = hmac_sha1(&salted_passwd[], b"Client Key");
+        let client_key = hmac(SHA1, &salted_passwd[], b"Client Key");
 
         // StoredKey := H(ClientKey)
-        let stored_key = sha1(&client_key[]);
+        let stored_key = hash(SHA1, &client_key[]);
 
         // ClientSignature := HMAC(StoredKey, AuthMessage)
-        let client_signature = hmac_sha1(&stored_key[], &auth_message[]);
+        let client_signature = hmac(SHA1, &stored_key[], &auth_message[]);
         // ServerKey := HMAC(SaltedPassword, "Server Key")
-        let server_key = hmac_sha1(&salted_passwd[], b"Server Key");
+        let server_key = hmac(SHA1, &salted_passwd[], b"Server Key");
         // ServerSignature := HMAC(ServerKey, AuthMessage)
-        let server_signature = hmac_sha1(&server_key[], &auth_message[]);
+        let server_signature = hmac(SHA1, &server_key[], &auth_message[]);
         // ClientProof := ClientKey XOR ClientSignature
         let client_proof: Vec<u8> = client_key.iter().zip(client_signature.iter()).map(|(x, y)| {
             *x ^ *y
