@@ -119,7 +119,7 @@ impl XmppStream {
             let builder = &mut self.builder;
             let handler = &mut self.handler;
             self.parser.feed_str(&string[]);
-            for event in self.parser {
+            for event in &mut self.parser {
                 match event {
                     Ok(xml::Event::ElementStart(xml::StartTag {
                         ref name,
@@ -147,14 +147,13 @@ impl XmppStream {
                         try!(handler.close_stream());
                         break 'main;
                     }
-                    Ok(event) => {
+                    event => {
                         match builder.push_event(event) {
                             Ok(Some(ref e)) => { try!(handler.handle_stanza(e)); }
                             Ok(None) => (),
                             Err(e) => println!("{}", e),
                         }
                     }
-                    Err(e) => println!("Line: {} Column: {} Msg: {}", e.line, e.col, e.msg),
                 }
             }
         }

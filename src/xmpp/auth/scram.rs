@@ -58,7 +58,7 @@ fn parse_server_first(data: &str) -> Result<(String, Vec<u8>, u16), &'static str
                 s => s
             };
         } else if sub.starts_with("i=") {
-            iter = match sub[2..].parse() {
+            iter = match sub[2..].parse().ok() {
                 None => break,
                 it => it,
             };
