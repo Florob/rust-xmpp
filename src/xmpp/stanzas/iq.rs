@@ -20,7 +20,7 @@ pub enum IqType {
 pub struct Iq { elem: xml::Element }
 
 impl_Stanza!("iq", Iq, IqType,
-    |: ty: &str| {
+    |ty: &str| {
         match ty {
             "get" => Some(IqType::Get),
             "set" => Some(IqType::Set),
