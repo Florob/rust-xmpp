@@ -149,7 +149,7 @@ impl XmppStream {
                     }
                     event => {
                         match builder.push_event(event) {
-                            Ok(Some(ref e)) => { try!(handler.handle_stanza(e)); }
+                            Ok(Some(e)) => { try!(handler.handle_stanza(e)); }
                             Ok(None) => (),
                             Err(e) => println!("{}", e),
                         }
@@ -180,25 +180,21 @@ impl XmppHandler {
         self.socket.flush()
     }
 
-    fn handle_stanza(&mut self, stanza: &xml::Element) -> IoResult<()> {
-        println!("In: {}", *stanza);
-        match stanza {
-            features if features.name == "features"
-                        && features.ns.as_ref().map(|x| &x[]) == Some(ns::STREAMS) => {
-                return self.handle_features(features);
-            }
-            starttls if starttls.ns.as_ref().map(|x| &x[]) == Some(ns::FEATURE_TLS) => {
-                return self.handle_starttls(starttls);
-            }
-            sasl if sasl.ns.as_ref().map(|x| &x[]) == Some(ns::FEATURE_SASL) => {
-                return self.handle_sasl(sasl);
-            }
-            _ => ()
+    fn handle_stanza(&mut self, stanza: xml::Element) -> IoResult<()> {
+        println!("In: {}", stanza);
+        if stanza.ns.as_ref().map(|x| &x[]) == Some(ns::STREAMS) && stanza.name == "features" {
+            return self.handle_features(stanza);
+        }
+        if stanza.ns.as_ref().map(|x| &x[]) == Some(ns::FEATURE_TLS) {
+            return self.handle_starttls(stanza);
+        }
+        if stanza.ns.as_ref().map(|x| &x[]) == Some(ns::FEATURE_SASL) {
+            return self.handle_sasl(stanza);
         }
         Ok(())
     }
 
-    fn handle_features(&mut self, features: &xml::Element) -> IoResult<()> {
+    fn handle_features(&mut self, features: xml::Element) -> IoResult<()> {
         // StartTLS
         let starttls = features.get_child("starttls", Some(ns::FEATURE_TLS));
         if starttls.is_some() {
@@ -216,10 +212,11 @@ impl XmppHandler {
         if bind.is_some() {
             return self.handle_bind();
         }
+
         Ok(())
     }
 
-    fn handle_starttls(&mut self, starttls: &xml::Element) -> IoResult<()> {
+    fn handle_starttls(&mut self, starttls: xml::Element) -> IoResult<()> {
         if starttls.name == "proceed" {
             let socket = mem::replace(&mut self.socket, XmppSocket::NoSock);
             match socket {
@@ -228,7 +225,7 @@ impl XmppHandler {
                         Ok(ctx) => ctx,
                         Err(_) => return Err(IoError {
                             kind: OtherIoError,
-                            desc: "Couldn not create SSL context",
+                            desc: "Could not create SSL context",
                             detail: None
                         })
                     };
@@ -280,7 +277,7 @@ impl XmppHandler {
         Ok(())
     }
 
-    fn handle_sasl(&mut self, sasl: &xml::Element) -> IoResult<()> {
+    fn handle_sasl(&mut self, sasl: xml::Element) -> IoResult<()> {
         if sasl.name == "challenge" {
             let challenge = match sasl.content_str()[].from_base64() {
                 Ok(c) => c,
