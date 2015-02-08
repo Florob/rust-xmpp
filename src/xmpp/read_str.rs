@@ -39,4 +39,3 @@ impl<S: Stream> ReadString for BufferedStream<S> {
         Ok(result)
     }
 }
-

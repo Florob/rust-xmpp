@@ -1,5 +1,5 @@
 // rust-xmpp
-// Copyright (c) 2014 Florian Zeitz
+// Copyright (c) 2014-2015 Florian Zeitz
 //
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
@@ -18,58 +18,24 @@ extern crate "rustc-serialize" as serialize;
 extern crate openssl;
 extern crate xml;
 
-use std::mem;
 use std::old_io::net::tcp::TcpStream;
 use std::old_io::BufferedStream;
-use std::old_io::{IoResult, IoError, OtherIoError};
+use std::old_io::IoResult;
 use serialize::base64;
 use serialize::base64::{FromBase64, ToBase64};
-use openssl::ssl::{SslContext, SslStream, SslMethod};
 
 use read_str::ReadString;
 use xmpp_send::XmppSend;
+use xmpp_socket::XmppSocket;
 use auth::Authenticator;
 use auth::{PlainAuth, ScramAuth};
 
 mod read_str;
 mod xmpp_send;
+mod xmpp_socket;
 mod auth;
 pub mod ns;
 pub mod stanzas;
-
-enum XmppSocket {
-    Tcp(BufferedStream<TcpStream>),
-    Tls(BufferedStream<SslStream<TcpStream>>),
-    NoSock
-}
-
-impl Writer for XmppSocket {
-    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
-        match *self {
-            XmppSocket::Tcp(ref mut stream) => stream.write_all(buf),
-            XmppSocket::Tls(ref mut stream) => stream.write_all(buf),
-            XmppSocket::NoSock => panic!("No socket yet")
-        }
-    }
-
-    fn flush(&mut self) -> IoResult<()> {
-        match *self {
-            XmppSocket::Tcp(ref mut stream) => stream.flush(),
-            XmppSocket::Tls(ref mut stream) => stream.flush(),
-            XmppSocket::NoSock => panic!("No socket yet")
-        }
-    }
-}
-
-impl ReadString for XmppSocket {
-    fn read_str(&mut self) -> IoResult<String> {
-        match *self {
-            XmppSocket::Tcp(ref mut stream) => stream.read_str(),
-            XmppSocket::Tls(ref mut stream) => stream.read_str(),
-            XmppSocket::NoSock => panic!("Tried to read string before socket exists")
-        }
-    }
-}
 
 struct XmppHandler {
     username: String,
@@ -218,32 +184,9 @@ impl XmppHandler {
 
     fn handle_starttls(&mut self, starttls: xml::Element) -> IoResult<()> {
         if starttls.name == "proceed" {
-            let socket = mem::replace(&mut self.socket, XmppSocket::NoSock);
-            match socket {
-                XmppSocket::Tcp(sock) => {
-                    let ctx = match SslContext::new(SslMethod::Sslv23) {
-                        Ok(ctx) => ctx,
-                        Err(_) => return Err(IoError {
-                            kind: OtherIoError,
-                            desc: "Could not create SSL context",
-                            detail: None
-                        })
-                    };
-                    let ssl = match SslStream::new(&ctx, sock.into_inner()) {
-                        Ok(ssl) => ssl,
-                        Err(_) => return Err(IoError {
-                            kind: OtherIoError,
-                            desc: "Couldn not create SSL stream",
-                            detail: None
-                        })
-                    };
-                    self.socket = XmppSocket::Tls(BufferedStream::new(ssl));
-                    return self.start_stream();
-                }
-                _ => panic!("No socket, or TLS already negotiated")
-            }
+            try!(self.socket.starttls());
+            return self.start_stream();
         }
-
         Ok(())
     }
 
