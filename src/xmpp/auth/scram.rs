@@ -94,7 +94,7 @@ impl ScramAuth {
                 _ => unreachable!()
             };
 
-            if !nonce.starts_with(&cnonce[]) {
+            if !nonce.starts_with(&cnonce[..]) {
                 return Err("SCRAM: Server replied with invalid nonce")
             }
         }
@@ -114,7 +114,7 @@ impl ScramAuth {
         result.extend(nonce.bytes());
 
         // SaltedPassword := Hi(Normalize(password), salt, i)
-        let salted_passwd = pbkdf2_hmac_sha1(&self.passwd[], &salt[], iter as usize, 20);
+        let salted_passwd = pbkdf2_hmac_sha1(&self.passwd[..], &salt[..], iter as usize, 20);
 
         /*
          * AuthMessage := client-first-message-bare + "," +
@@ -132,20 +132,20 @@ impl ScramAuth {
         auth_message.push(',' as u8);
         auth_message.extend(data.bytes());
         auth_message.push(',' as u8);
-        auth_message.push_all(&result[]);
+        auth_message.push_all(&result);
 
         // ClientKey := HMAC(SaltedPassword, "Client Key")
-        let client_key = hmac(SHA1, &salted_passwd[], b"Client Key");
+        let client_key = hmac(SHA1, &salted_passwd, b"Client Key");
 
         // StoredKey := H(ClientKey)
-        let stored_key = hash(SHA1, &client_key[]);
+        let stored_key = hash(SHA1, &client_key);
 
         // ClientSignature := HMAC(StoredKey, AuthMessage)
-        let client_signature = hmac(SHA1, &stored_key[], &auth_message[]);
+        let client_signature = hmac(SHA1, &stored_key, &auth_message);
         // ServerKey := HMAC(SaltedPassword, "Server Key")
-        let server_key = hmac(SHA1, &salted_passwd[], b"Server Key");
+        let server_key = hmac(SHA1, &salted_passwd, b"Server Key");
         // ServerSignature := HMAC(ServerKey, AuthMessage)
-        let server_signature = hmac(SHA1, &server_key[], &auth_message[]);
+        let server_signature = hmac(SHA1, &server_key, &auth_message);
         // ClientProof := ClientKey XOR ClientSignature
         let client_proof: Vec<u8> = client_key.iter().zip(client_signature.iter()).map(|(x, y)| {
             *x ^ *y

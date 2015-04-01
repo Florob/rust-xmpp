@@ -4,41 +4,36 @@
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
 
+use std::io;
+use std::io::{Write, BufStream};
 use std::mem;
-use std::old_io::BufferedStream;
-use std::old_io::{IoResult, IoError, OtherIoError};
-use std::old_io::net::tcp::TcpStream;
+use std::net::TcpStream;
 use openssl::ssl::{SslContext, SslStream, SslMethod};
 
 use read_str::ReadString;
 
 pub enum XmppSocket {
-    Tcp(BufferedStream<TcpStream>),
-    Tls(BufferedStream<SslStream<TcpStream>>),
+    Tcp(BufStream<TcpStream>),
+    Tls(BufStream<SslStream<TcpStream>>),
     NoSock
 }
 
 impl XmppSocket {
-    pub fn starttls(&mut self) -> IoResult<()> {
+    pub fn starttls(&mut self) -> io::Result<()> {
         let socket = mem::replace(self, XmppSocket::NoSock);
         if let XmppSocket::Tcp(sock) = socket {
+            let sock = try!(sock.into_inner());
             let ctx = match SslContext::new(SslMethod::Sslv23) {
                 Ok(ctx) => ctx,
-                Err(_) => return Err(IoError {
-                    kind: OtherIoError,
-                    desc: "Could not create SSL context",
-                    detail: None
-                })
+                Err(_) => return Err(io::Error::new(io::ErrorKind::Other,
+                                                    "Could not create SSL context", None))
             };
-            let ssl = match SslStream::new(&ctx, sock.into_inner()) {
+            let ssl = match SslStream::new(&ctx, sock) {
                 Ok(ssl) => ssl,
-                Err(_) => return Err(IoError {
-                    kind: OtherIoError,
-                    desc: "Couldn not create SSL stream",
-                    detail: None
-                })
+                Err(_) => return Err(io::Error::new(io::ErrorKind::Other,
+                                                    "Could not create SSL stream", None))
             };
-            *self = XmppSocket::Tls(BufferedStream::new(ssl));
+            *self = XmppSocket::Tls(BufStream::new(ssl));
         } else {
             panic!("No socket, or TLS already negotiated");
         }
@@ -46,16 +41,16 @@ impl XmppSocket {
     }
 }
 
-impl Writer for XmppSocket {
-    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
+impl Write for XmppSocket {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match *self {
-            XmppSocket::Tcp(ref mut stream) => stream.write_all(buf),
-            XmppSocket::Tls(ref mut stream) => stream.write_all(buf),
+            XmppSocket::Tcp(ref mut stream) => stream.write(buf),
+            XmppSocket::Tls(ref mut stream) => stream.write(buf),
             XmppSocket::NoSock => panic!("No socket yet")
         }
     }
 
-    fn flush(&mut self) -> IoResult<()> {
+    fn flush(&mut self) -> io::Result<()> {
         match *self {
             XmppSocket::Tcp(ref mut stream) => stream.flush(),
             XmppSocket::Tls(ref mut stream) => stream.flush(),
@@ -65,7 +60,7 @@ impl Writer for XmppSocket {
 }
 
 impl ReadString for XmppSocket {
-    fn read_str(&mut self) -> IoResult<String> {
+    fn read_str(&mut self) -> io::Result<String> {
         match *self {
             XmppSocket::Tcp(ref mut stream) => stream.read_str(),
             XmppSocket::Tls(ref mut stream) => stream.read_str(),

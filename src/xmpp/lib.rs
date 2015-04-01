@@ -8,19 +8,19 @@
 #![crate_type = "lib"]
 
 // These are unsable for now
-#![feature(core)]
 #![feature(collections)]
 #![feature(io)]
 #![feature(unicode)]
+#![feature(into_cow)]
 
 extern crate unicode;
-extern crate "rustc-serialize" as serialize;
+extern crate rustc_serialize as serialize;
 extern crate openssl;
 extern crate xml;
 
-use std::old_io::net::tcp::TcpStream;
-use std::old_io::BufferedStream;
-use std::old_io::IoResult;
+use std::io;
+use std::io::{Write, BufStream};
+use std::net::TcpStream;
 use serialize::base64;
 use serialize::base64::{FromBase64, ToBase64};
 
@@ -66,17 +66,17 @@ impl XmppStream {
         }
     }
 
-    pub fn connect(&mut self) -> IoResult<()> {
+    pub fn connect(&mut self) -> io::Result<()> {
         let stream = {
-            let address = &self.handler.domain[];
-            try!(TcpStream::connect((address, 5222)))
+            let address = &self.handler.domain[..];
+            try!(TcpStream::connect(&(address, 5222)))
         };
 
-        self.handler.socket = XmppSocket::Tcp(BufferedStream::new(stream));
+        self.handler.socket = XmppSocket::Tcp(BufStream::new(stream));
         self.handler.start_stream()
     }
 
-    pub fn handle(&mut self) -> IoResult<()> {
+    pub fn handle(&mut self) -> io::Result<()> {
         'main: loop {
             let string = {
                 let socket = &mut self.handler.socket;
@@ -84,7 +84,7 @@ impl XmppStream {
             };
             let builder = &mut self.builder;
             let handler = &mut self.handler;
-            self.parser.feed_str(&string[]);
+            self.parser.feed_str(&string);
             for event in &mut self.parser {
                 match event {
                     Ok(xml::Event::ElementStart(xml::StartTag {
@@ -96,12 +96,12 @@ impl XmppStream {
                         match *prefix {
                             Some(ref prefix) => {
                                 *builder = xml::ElementBuilder::new();
-                                builder.set_default_ns(ns::JABBER_CLIENT);
-                                builder.define_prefix(&prefix[], ns::STREAMS);
+                                builder.set_default_ns(ns::JABBER_CLIENT.to_string());
+                                builder.define_prefix(prefix.clone(), ns::STREAMS.to_string());
                             }
                             None => {
                                 *builder = xml::ElementBuilder::new();
-                                builder.set_default_ns(ns::STREAMS);
+                                builder.set_default_ns(ns::STREAMS.to_string());
                             }
                         }
                     }
@@ -114,10 +114,10 @@ impl XmppStream {
                         break 'main;
                     }
                     event => {
-                        match builder.push_event(event) {
-                            Ok(Some(e)) => { try!(handler.handle_stanza(e)); }
-                            Ok(None) => (),
-                            Err(e) => println!("{}", e),
+                        match builder.handle_event(event) {
+                            Some(Ok(e)) => { try!(handler.handle_stanza(e)); }
+                            Some(Err(e)) => println!("{}", e),
+                            None => (),
                         }
                     }
                 }
@@ -128,39 +128,39 @@ impl XmppStream {
 }
 
 impl XmppHandler {
-    fn start_stream(&mut self) -> IoResult<()> {
+    fn start_stream(&mut self) -> io::Result<()> {
         let start = format!("<?xml version='1.0'?>\n\
                              <stream:stream xmlns:stream='{}' xmlns='{}' version='1.0' to='{}'>",
                              ns::STREAMS, ns::JABBER_CLIENT, self.domain);
         self.send(start)
     }
 
-    fn close_stream(&mut self) -> IoResult<()> {
+    fn close_stream(&mut self) -> io::Result<()> {
         self.send("</stream:stream>")
     }
 
-    fn send<T: XmppSend>(&mut self, data: T) -> IoResult<()> {
+    fn send<'a, T: XmppSend<'a>>(&mut self, data: T) -> io::Result<()> {
         let data = data.xmpp_str();
         println!("Out: {}", data);
         try!(self.socket.write_all(data.as_bytes()));
         self.socket.flush()
     }
 
-    fn handle_stanza(&mut self, stanza: xml::Element) -> IoResult<()> {
+    fn handle_stanza(&mut self, stanza: xml::Element) -> io::Result<()> {
         println!("In: {}", stanza);
-        if stanza.ns.as_ref().map(|x| &x[]) == Some(ns::STREAMS) && stanza.name == "features" {
+        if stanza.ns.as_ref().map(|x| &x[..]) == Some(ns::STREAMS) && stanza.name == "features" {
             return self.handle_features(stanza);
         }
-        if stanza.ns.as_ref().map(|x| &x[]) == Some(ns::FEATURE_TLS) {
+        if stanza.ns.as_ref().map(|x| &x[..]) == Some(ns::FEATURE_TLS) {
             return self.handle_starttls(stanza);
         }
-        if stanza.ns.as_ref().map(|x| &x[]) == Some(ns::FEATURE_SASL) {
+        if stanza.ns.as_ref().map(|x| &x[..]) == Some(ns::FEATURE_SASL) {
             return self.handle_sasl(stanza);
         }
         Ok(())
     }
 
-    fn handle_features(&mut self, features: xml::Element) -> IoResult<()> {
+    fn handle_features(&mut self, features: xml::Element) -> io::Result<()> {
         // StartTLS
         let starttls = features.get_child("starttls", Some(ns::FEATURE_TLS));
         if starttls.is_some() {
@@ -182,7 +182,7 @@ impl XmppHandler {
         Ok(())
     }
 
-    fn handle_starttls(&mut self, starttls: xml::Element) -> IoResult<()> {
+    fn handle_starttls(&mut self, starttls: xml::Element) -> io::Result<()> {
         if starttls.name == "proceed" {
             try!(self.socket.starttls());
             return self.start_stream();
@@ -190,19 +190,19 @@ impl XmppHandler {
         Ok(())
     }
 
-    fn handle_mechs(&mut self, mechs: &xml::Element) -> IoResult<()> {
+    fn handle_mechs(&mut self, mechs: &xml::Element) -> io::Result<()> {
         let mechs = mechs.get_children("mechanism", Some(ns::FEATURE_SASL));
 
-        for mech in mechs.iter() {
+        for mech in mechs {
             let mech = mech.content_str();
-            let auth = match &mech[] {
+            let auth = match &mech[..] {
                 "SCRAM-SHA-1" => {
-                    Box::new(ScramAuth::new(&self.username[],
-                                            &self.password[], None)) as Box<Authenticator>
+                    Box::new(ScramAuth::new(&self.username,
+                                            &self.password, None)) as Box<Authenticator>
                 }
                 "PLAIN" => {
-                    Box::new(PlainAuth::new(&self.username[],
-                                            &self.password[], None)) as Box<Authenticator>
+                    Box::new(PlainAuth::new(&self.username,
+                                            &self.password, None)) as Box<Authenticator>
                 }
                 _ => continue
             };
@@ -220,16 +220,16 @@ impl XmppHandler {
         Ok(())
     }
 
-    fn handle_sasl(&mut self, sasl: xml::Element) -> IoResult<()> {
+    fn handle_sasl(&mut self, sasl: xml::Element) -> io::Result<()> {
         if sasl.name == "challenge" {
-            let challenge = match sasl.content_str()[].from_base64() {
+            let challenge = match sasl.content_str().from_base64() {
                 Ok(c) => c,
                 Err(_) => return Ok(())
             };
 
             let result = {
                 let auth = self.authenticator.as_mut().unwrap();
-                match auth.continuation(&challenge[]) {
+                match auth.continuation(&challenge) {
                     Ok(r) => r,
                     Err(e) => {
                         println!("{}", e);
@@ -238,7 +238,7 @@ impl XmppHandler {
                 }
             };
 
-            let data = result[].to_base64(base64::STANDARD);
+            let data = result.to_base64(base64::STANDARD);
             return self.send(format!("<response xmlns='{}'>{}</response>",
                                      ns::FEATURE_SASL, data));
         }
@@ -250,7 +250,7 @@ impl XmppHandler {
             };
             {
                 let auth = self.authenticator.as_mut().unwrap();
-                match auth.continuation(&success[]) {
+                match auth.continuation(&success) {
                     Ok(_) => (),
                     Err(e) => {
                         println!("{}", e);
@@ -264,7 +264,7 @@ impl XmppHandler {
         Ok(())
     }
 
-    fn handle_bind(&mut self) -> IoResult<()> {
+    fn handle_bind(&mut self) -> io::Result<()> {
         self.send(format!("<iq type='set' id='bind'>\
                                <bind xmlns='{}'/>\
                            </iq>", ns::FEATURE_BIND))

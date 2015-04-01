@@ -32,12 +32,12 @@ macro_rules! impl_Stanza(
             type Ty = $ty;
             fn from_element(e: xml::Element) -> ::std::result::Result<$kind, xml::Element> {
                 match e.ns {
-                    Some(ref ns) if &ns[] == ns::JABBER_CLIENT
-                                    || &ns[] == ns::JABBER_SERVER => (),
+                    Some(ref ns) if *ns == ns::JABBER_CLIENT
+                                    || *ns == ns::JABBER_SERVER => (),
                     _ => return Err(e)
                 }
 
-                if &e.name[] == $name {
+                if e.name == $name {
                     Ok($kind { elem: e })
                 } else {
                     Err(e)
@@ -88,12 +88,12 @@ pub enum AStanza {
 impl AStanza {
     pub fn from_element(e: xml::Element) -> Result<AStanza, xml::Element> {
         match e.ns {
-            Some(ref ns) if &ns[] == ns::JABBER_CLIENT
-                            || &ns[] == ns::JABBER_SERVER => (),
+            Some(ref ns) if *ns == ns::JABBER_CLIENT
+                            || *ns == ns::JABBER_SERVER => (),
             _ => return Err(e)
         }
 
-        match &e.name[] {
+        match &e.name[..] {
             "iq" => Stanza::from_element(e).and_then(|s| Ok(AStanza::IqStanza(s))),
             "message" => Stanza::from_element(e).and_then(|s| Ok(AStanza::MessageStanza(s))),
             "presence" => Stanza::from_element(e).and_then(|s| Ok(AStanza::PresenceStanza(s))),
