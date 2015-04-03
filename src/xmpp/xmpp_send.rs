@@ -5,7 +5,7 @@
 // Please see the COPYING file for more information.
 
 use xml::Element;
-use std::borrow::{Cow, IntoCow};
+use std::borrow::Cow;
 
 pub trait XmppSend<'a> {
     fn xmpp_str(self) -> Cow<'a, str>;
@@ -13,18 +13,18 @@ pub trait XmppSend<'a> {
 
 impl<'a> XmppSend<'a> for &'a str {
     fn xmpp_str(self) -> Cow<'a, str> {
-        self.into_cow()
+        Cow::from(self)
     }
 }
 
 impl XmppSend<'static> for String {
     fn xmpp_str(self) -> Cow<'static, str> {
-        self.into_cow()
+        Cow::from(self)
     }
 }
 
 impl<'a> XmppSend<'static> for &'a Element {
     fn xmpp_str(self) -> Cow<'static, str> {
-        (format!("{}", self)).into_cow()
+        Cow::from(self.to_string())
     }
 }

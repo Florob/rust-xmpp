@@ -26,12 +26,12 @@ impl XmppSocket {
             let ctx = match SslContext::new(SslMethod::Sslv23) {
                 Ok(ctx) => ctx,
                 Err(_) => return Err(io::Error::new(io::ErrorKind::Other,
-                                                    "Could not create SSL context", None))
+                                                    "Could not create SSL context"))
             };
             let ssl = match SslStream::new(&ctx, sock) {
                 Ok(ssl) => ssl,
                 Err(_) => return Err(io::Error::new(io::ErrorKind::Other,
-                                                    "Could not create SSL stream", None))
+                                                    "Could not create SSL stream"))
             };
             *self = XmppSocket::Tls(BufStream::new(ssl));
         } else {

@@ -8,10 +8,7 @@
 #![crate_type = "lib"]
 
 // These are unsable for now
-#![feature(collections)]
-#![feature(io)]
 #![feature(unicode)]
-#![feature(into_cow)]
 
 extern crate unicode;
 extern crate rustc_serialize as serialize;

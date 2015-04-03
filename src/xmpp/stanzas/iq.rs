@@ -9,7 +9,7 @@ use ns;
 
 use super::Stanza;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum IqType {
     Set,
     Get,

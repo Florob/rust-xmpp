@@ -105,12 +105,12 @@ impl ScramAuth {
             b"n,,".to_base64(base64::STANDARD)
         };
 
-        let mut result = Vec::new();
+        let mut result: Vec<u8> = Vec::new();
         // Add c=<base64(GS2Header+channelBindingData)>
-        result.push_all(b"c=");
+        result.extend("c=".bytes());
         result.extend(gs2header.bytes());
         // Add r=<nonce>
-        result.push_all(b",r=");
+        result.extend(",r=".bytes());
         result.extend(nonce.bytes());
 
         // SaltedPassword := Hi(Normalize(password), salt, i)
@@ -132,7 +132,7 @@ impl ScramAuth {
         auth_message.push(',' as u8);
         auth_message.extend(data.bytes());
         auth_message.push(',' as u8);
-        auth_message.push_all(&result);
+        auth_message.extend(result.iter().cloned());
 
         // ClientKey := HMAC(SaltedPassword, "Client Key")
         let client_key = hmac(SHA1, &salted_passwd, b"Client Key");
@@ -152,7 +152,7 @@ impl ScramAuth {
         }).collect();
 
         // Add p=<base64(ClientProof)>
-        result.push_all(b",p=");
+        result.extend(",p=".bytes());
         result.extend(client_proof.to_base64(base64::STANDARD).bytes());
 
         self.state = State::WaitFinal(server_signature);
