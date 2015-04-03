@@ -11,15 +11,15 @@
 #![feature(unicode)]
 
 extern crate unicode;
-extern crate rustc_serialize as serialize;
+extern crate rustc_serialize;
 extern crate openssl;
 extern crate xml;
 
 use std::io;
 use std::io::{Write, BufStream};
 use std::net::TcpStream;
-use serialize::base64;
-use serialize::base64::{FromBase64, ToBase64};
+use rustc_serialize::base64;
+use rustc_serialize::base64::{FromBase64, ToBase64};
 
 use read_str::ReadString;
 use xmpp_send::XmppSend;

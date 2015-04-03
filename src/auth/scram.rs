@@ -12,8 +12,8 @@ use openssl::crypto::hash::Type::SHA1;
 use openssl::crypto::hash::hash;
 use openssl::crypto::hmac::hmac;
 use openssl::crypto::pkcs5::pbkdf2_hmac_sha1;
-use serialize::base64;
-use serialize::base64::{FromBase64, ToBase64};
+use rustc_serialize::base64;
+use rustc_serialize::base64::{FromBase64, ToBase64};
 
 macro_rules! check (
     ($e:expr, $s:expr) => (match $e { Some(s) => s, None => return Err($s) })
