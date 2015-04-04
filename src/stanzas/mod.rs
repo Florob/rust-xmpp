@@ -88,15 +88,14 @@ pub enum AStanza {
 impl AStanza {
     pub fn from_element(e: xml::Element) -> Result<AStanza, xml::Element> {
         match e.ns {
-            Some(ref ns) if *ns == ns::JABBER_CLIENT
-                            || *ns == ns::JABBER_SERVER => (),
+            Some(ref ns) if *ns == ns::JABBER_CLIENT || *ns == ns::JABBER_SERVER => (),
             _ => return Err(e)
         }
 
         match &e.name[..] {
-            "iq" => Stanza::from_element(e).and_then(|s| Ok(AStanza::IqStanza(s))),
-            "message" => Stanza::from_element(e).and_then(|s| Ok(AStanza::MessageStanza(s))),
-            "presence" => Stanza::from_element(e).and_then(|s| Ok(AStanza::PresenceStanza(s))),
+            "iq" => Stanza::from_element(e).map(AStanza::IqStanza),
+            "message" => Stanza::from_element(e).map(AStanza::MessageStanza),
+            "presence" => Stanza::from_element(e).map(AStanza::PresenceStanza),
             _ => Err(e)
         }
     }

@@ -37,7 +37,7 @@ fn gen_nonce() -> Vec<u8> {
     let mut nonce = rand_bytes(64);
 
     for c in nonce.iter_mut() {
-        // Restrict output to printable ASCII, excludint '~'
+        // Restrict output to printable ASCII, excluding '~'
         *c = ( *c % (('~' as u8) - ('!' as u8)) ) + ('!' as u8);
         // Map occurences of ',' to '~'
         if *c == (',' as u8) { *c = '~' as u8 }
@@ -45,13 +45,13 @@ fn gen_nonce() -> Vec<u8> {
     nonce
 }
 
-fn parse_server_first(data: &str) -> Result<(String, Vec<u8>, u16), &'static str> {
+fn parse_server_first<'a>(data: &'a str) -> Result<(&'a str, Vec<u8>, u16), &'static str> {
     let mut nonce = None;
     let mut salt = None;
     let mut iter: Option<u16> = None;
     for  sub in data.split(',') {
         if sub.starts_with("r=") {
-            nonce = Some(sub[2..].to_string());
+            nonce = Some(&sub[2..]);
         } else if sub.starts_with("s=") {
             salt = match sub[2..].from_base64().ok() {
                 None => return Err("SCRAM: Invalid base64 encoding for salt"),
@@ -59,7 +59,7 @@ fn parse_server_first(data: &str) -> Result<(String, Vec<u8>, u16), &'static str
             };
         } else if sub.starts_with("i=") {
             iter = match sub[2..].parse().ok() {
-                None => break,
+                None => return Err("SCRAM: Iteration count is not a number"),
                 it => it,
             };
         } else if sub.starts_with("m=") {
@@ -75,11 +75,11 @@ fn parse_server_first(data: &str) -> Result<(String, Vec<u8>, u16), &'static str
 }
 
 impl ScramAuth {
-    pub fn new(authcid: &str, passwd: &str, authzid: Option<&str>) -> ScramAuth {
+    pub fn new(authcid: String, passwd: String, authzid: Option<String>) -> ScramAuth {
         ScramAuth {
-            authcid: authcid.to_string(),
-            passwd: passwd.to_string(),
-            authzid: authzid.map(|x| x.to_string()),
+            authcid: authcid,
+            passwd: passwd,
+            authzid: authzid,
             state: State::Initial
         }
     }
@@ -114,7 +114,7 @@ impl ScramAuth {
         result.extend(nonce.bytes());
 
         // SaltedPassword := Hi(Normalize(password), salt, i)
-        let salted_passwd = pbkdf2_hmac_sha1(&self.passwd[..], &salt[..], iter as usize, 20);
+        let salted_passwd = pbkdf2_hmac_sha1(&self.passwd, &salt, iter as usize, 20);
 
         /*
          * AuthMessage := client-first-message-bare + "," +
@@ -129,9 +129,9 @@ impl ScramAuth {
             };
             auth_message.extend(client_first_message_bare.bytes());
         }
-        auth_message.push(',' as u8);
+        auth_message.push(b',');
         auth_message.extend(data.bytes());
-        auth_message.push(',' as u8);
+        auth_message.push(b',');
         auth_message.extend(result.iter().cloned());
 
         // ClientKey := HMAC(SaltedPassword, "Client Key")

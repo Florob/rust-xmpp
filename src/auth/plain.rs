@@ -13,11 +13,11 @@ pub struct PlainAuth {
 }
 
 impl PlainAuth {
-    pub fn new(authcid: &str, passwd: &str, authzid: Option<&str>) -> PlainAuth {
+    pub fn new(authcid: String, passwd: String, authzid: Option<String>) -> PlainAuth {
         PlainAuth {
-            authcid: authcid.to_string(),
-            passwd: passwd.to_string(),
-            authzid: authzid.map(|x| x.to_string())
+            authcid: authcid,
+            passwd: passwd,
+            authzid: authzid
         }
     }
 }

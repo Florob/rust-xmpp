@@ -74,7 +74,7 @@ impl XmppStream {
     }
 
     pub fn handle(&mut self) -> io::Result<()> {
-        'main: loop {
+        loop {
             let string = {
                 let socket = &mut self.handler.socket;
                 try!(socket.read_str())
@@ -108,7 +108,7 @@ impl XmppStream {
                     })) if *name == "stream" && *ns == ns::STREAMS => {
                         println!("In: Stream end");
                         try!(handler.close_stream());
-                        break 'main;
+                        return Ok(())
                     }
                     event => {
                         match builder.handle_event(event) {
@@ -120,7 +120,6 @@ impl XmppStream {
                 }
             }
         }
-        Ok(())
     }
 }
 
@@ -159,20 +158,17 @@ impl XmppHandler {
 
     fn handle_features(&mut self, features: xml::Element) -> io::Result<()> {
         // StartTLS
-        let starttls = features.get_child("starttls", Some(ns::FEATURE_TLS));
-        if starttls.is_some() {
+        if features.get_child("starttls", Some(ns::FEATURE_TLS)).is_some() {
             return self.send(format!("<starttls xmlns='{}'/>", ns::FEATURE_TLS));
         }
 
         // Auth mechanisms
-        let mechs = features.get_child("mechanisms", Some(ns::FEATURE_SASL));
-        if mechs.is_some() {
-            return self.handle_mechs(mechs.unwrap());
+        if let Some(mechs) = features.get_child("mechanisms", Some(ns::FEATURE_SASL)) {
+            return self.handle_mechs(mechs);
         }
 
         // Bind
-        let bind = features.get_child("bind", Some(ns::FEATURE_BIND));
-        if bind.is_some() {
+        if features.get_child("bind", Some(ns::FEATURE_BIND)).is_some() {
             return self.handle_bind();
         }
 
@@ -192,15 +188,11 @@ impl XmppHandler {
 
         for mech in mechs {
             let mech = mech.content_str();
-            let auth = match &mech[..] {
-                "SCRAM-SHA-1" => {
-                    Box::new(ScramAuth::new(&self.username,
-                                            &self.password, None)) as Box<Authenticator>
-                }
-                "PLAIN" => {
-                    Box::new(PlainAuth::new(&self.username,
-                                            &self.password, None)) as Box<Authenticator>
-                }
+            let auth: Box<Authenticator> = match &mech[..] {
+                "SCRAM-SHA-1" => Box::new(ScramAuth::new(self.username.clone(),
+                                                         self.password.clone(), None)),
+                "PLAIN" => Box::new(PlainAuth::new(self.username.clone(),
+                                                   self.password.clone(), None)),
                 _ => continue
             };
             self.authenticator = Some(auth);
