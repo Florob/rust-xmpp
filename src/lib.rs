@@ -15,6 +15,7 @@ extern crate rustc_serialize;
 extern crate openssl;
 extern crate xml;
 
+use std::fmt;
 use std::io;
 use std::io::{Write, BufStream};
 use std::net::TcpStream;
@@ -135,10 +136,9 @@ impl XmppHandler {
         self.send("</stream:stream>")
     }
 
-    fn send<'a, T: XmppSend<'a>>(&mut self, data: T) -> io::Result<()> {
-        let data = data.xmpp_str();
+    fn send<T: XmppSend + fmt::Display>(&mut self, data: T) -> io::Result<()> {
         println!("Out: {}", data);
-        try!(self.socket.write_all(data.as_bytes()));
+        try!(data.xmpp_send(&mut self.socket));
         self.socket.flush()
     }
 

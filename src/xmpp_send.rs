@@ -1,30 +1,18 @@
 // rust-xmpp
-// Copyright (c) 2014 Florian Zeitz
+// Copyright (c) 2014-2015 Florian Zeitz
 //
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
 
-use xml::Element;
-use std::borrow::Cow;
+use std::fmt;
+use std::io;
 
-pub trait XmppSend<'a> {
-    fn xmpp_str(self) -> Cow<'a, str>;
+pub trait XmppSend {
+    fn xmpp_send<W: io::Write>(&self, w: &mut W) -> io::Result<()>;
 }
 
-impl<'a> XmppSend<'a> for &'a str {
-    fn xmpp_str(self) -> Cow<'a, str> {
-        Cow::from(self)
-    }
-}
-
-impl XmppSend<'static> for String {
-    fn xmpp_str(self) -> Cow<'static, str> {
-        Cow::from(self)
-    }
-}
-
-impl<'a> XmppSend<'static> for &'a Element {
-    fn xmpp_str(self) -> Cow<'static, str> {
-        Cow::from(self.to_string())
+impl<T> XmppSend for T where T: fmt::Display {
+    fn xmpp_send<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
+        write!(w, "{}", self)
     }
 }
