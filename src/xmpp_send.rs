@@ -4,15 +4,13 @@
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
 
-use std::fmt;
-use std::io;
+use std::{fmt, io};
+use xml;
 
-pub trait XmppSend {
-    fn xmpp_send<W: io::Write>(&self, w: &mut W) -> io::Result<()>;
-}
-
-impl<T> XmppSend for T where T: fmt::Display {
+pub trait XmppSend: fmt::Display {
     fn xmpp_send<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         write!(w, "{}", self)
     }
 }
+
+impl XmppSend for xml::Element {}

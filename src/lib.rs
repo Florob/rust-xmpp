@@ -15,23 +15,24 @@ extern crate rustc_serialize;
 extern crate openssl;
 extern crate xml;
 
-use std::fmt;
 use std::io;
 use std::io::{Write, BufStream};
 use std::net::TcpStream;
 use rustc_serialize::base64;
 use rustc_serialize::base64::{FromBase64, ToBase64};
 
+use auth::Authenticator;
+use auth::{PlainAuth, ScramAuth};
+use non_stanzas::{AuthStart, AuthResponse, StreamStart, StreamEnd, StartTls};
 use read_str::ReadString;
 use xmpp_send::XmppSend;
 use xmpp_socket::XmppSocket;
-use auth::Authenticator;
-use auth::{PlainAuth, ScramAuth};
 
+mod auth;
+mod non_stanzas;
 mod read_str;
 mod xmpp_send;
 mod xmpp_socket;
-mod auth;
 pub mod ns;
 pub mod stanzas;
 
@@ -126,17 +127,17 @@ impl XmppStream {
 
 impl XmppHandler {
     fn start_stream(&mut self) -> io::Result<()> {
-        let start = format!("<?xml version='1.0'?>\n\
-                             <stream:stream xmlns:stream='{}' xmlns='{}' version='1.0' to='{}'>",
-                             ns::STREAMS, ns::JABBER_CLIENT, self.domain);
-        self.send(start)
+        let stream_start = StreamStart { to: &self.domain };
+        println!("Out: {}", stream_start);
+        try!(stream_start.xmpp_send(&mut self.socket));
+        self.socket.flush()
     }
 
     fn close_stream(&mut self) -> io::Result<()> {
-        self.send("</stream:stream>")
+        self.send(StreamEnd)
     }
 
-    fn send<T: XmppSend + fmt::Display>(&mut self, data: T) -> io::Result<()> {
+    fn send<T: XmppSend>(&mut self, data: T) -> io::Result<()> {
         println!("Out: {}", data);
         try!(data.xmpp_send(&mut self.socket));
         self.socket.flush()
@@ -159,7 +160,7 @@ impl XmppHandler {
     fn handle_features(&mut self, features: xml::Element) -> io::Result<()> {
         // StartTLS
         if features.get_child("starttls", Some(ns::FEATURE_TLS)).is_some() {
-            return self.send(format!("<starttls xmlns='{}'/>", ns::FEATURE_TLS));
+            return self.send(StartTls);
         }
 
         // Auth mechanisms
@@ -202,8 +203,7 @@ impl XmppHandler {
                 auth.initial().to_base64(base64::STANDARD)
             };
 
-            return self.send(format!("<auth mechanism='{}' xmlns='{}'>{}</auth>",
-                                     mech, ns::FEATURE_SASL, result));
+            return self.send(AuthStart { mech: &mech, data: &result });
         }
 
         Ok(())
@@ -228,8 +228,7 @@ impl XmppHandler {
             };
 
             let data = result.to_base64(base64::STANDARD);
-            return self.send(format!("<response xmlns='{}'>{}</response>",
-                                     ns::FEATURE_SASL, data));
+            return self.send(AuthResponse { data: &data });
         }
 
         if sasl.name == "success" {
@@ -254,8 +253,11 @@ impl XmppHandler {
     }
 
     fn handle_bind(&mut self) -> io::Result<()> {
-        self.send(format!("<iq type='set' id='bind'>\
-                               <bind xmlns='{}'/>\
-                           </iq>", ns::FEATURE_BIND))
+        let mut bind_iq = xml::Element::new("iq".to_string(), Some(ns::JABBER_CLIENT.to_string()),
+                                            vec![("type".to_string(), None, "set".to_string()),
+                                                 ("id".to_string(), None, "bind".to_string())]);
+        bind_iq.tag(xml::Element::new("bind".to_string(),
+                                      Some(ns::FEATURE_BIND.to_string()), vec![]));
+        self.send(bind_iq)
     }
 }
