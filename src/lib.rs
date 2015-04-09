@@ -253,11 +253,8 @@ impl XmppHandler {
     }
 
     fn handle_bind(&mut self) -> io::Result<()> {
-        let mut bind_iq = xml::Element::new("iq".to_string(), Some(ns::JABBER_CLIENT.to_string()),
-                                            vec![("type".to_string(), None, "set".to_string()),
-                                                 ("id".to_string(), None, "bind".to_string())]);
-        bind_iq.tag(xml::Element::new("bind".to_string(),
-                                      Some(ns::FEATURE_BIND.to_string()), vec![]));
+        let mut bind_iq = stanzas::Iq::new(stanzas::IqType::Set, "bind".into());
+        bind_iq.tag(xml::Element::new("bind".into(), Some(ns::FEATURE_BIND.into()), vec![]));
         self.send(bind_iq)
     }
 }

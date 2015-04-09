@@ -71,8 +71,28 @@ macro_rules! impl_Stanza(
                 }
             }
         }
+
+        impl ::std::ops::Deref for $kind {
+            type Target = xml::Element;
+            fn deref(&self) -> &xml::Element {
+                &self.elem
+            }
+        }
+
+        impl ::std::ops::DerefMut for $kind {
+            fn deref_mut(&mut self) -> &mut xml::Element {
+                &mut self.elem
+            }
+        }
+
+        impl ::std::fmt::Display for $kind {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                self.elem.fmt(f)
+            }
+        }
     );
 );
+
 
 // Has to be after impl_Stanza!
 mod iq;
