@@ -94,7 +94,7 @@ impl ScramAuth {
                 _ => unreachable!()
             };
 
-            if !nonce.starts_with(&cnonce[..]) {
+            if !nonce.starts_with(cnonce) {
                 return Err("SCRAM: Server replied with invalid nonce")
             }
         }

@@ -30,6 +30,7 @@ impl fmt::Display for IqType {
     }
 }
 
+#[derive(Clone)]
 pub struct Iq { elem: xml::Element }
 
 impl_Stanza!("iq", Iq, IqType,

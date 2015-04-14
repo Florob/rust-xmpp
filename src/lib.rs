@@ -18,6 +18,7 @@ extern crate xml;
 use std::io;
 use std::io::{Write, BufStream};
 use std::net::TcpStream;
+use std::ops::Deref;
 use rustc_serialize::base64;
 use rustc_serialize::base64::{FromBase64, ToBase64};
 
@@ -25,6 +26,7 @@ use auth::Authenticator;
 use auth::{PlainAuth, ScramAuth};
 use non_stanzas::{AuthStart, AuthResponse, StreamStart, StreamEnd, StartTls};
 use read_str::ReadString;
+use stanzas::{AStanza, Stanza, IqType};
 use xmpp_send::XmppSend;
 use xmpp_socket::XmppSocket;
 
@@ -35,6 +37,56 @@ mod xmpp_send;
 mod xmpp_socket;
 pub mod ns;
 pub mod stanzas;
+
+pub struct IqGuard<'a> {
+    iq: stanzas::Iq,
+    responded: bool,
+    handler: &'a mut XmppHandler
+}
+
+impl<'a> Deref for IqGuard<'a> {
+    type Target = stanzas::Iq;
+    fn deref(&self) -> &stanzas::Iq { &self.iq }
+}
+
+impl<'a> Drop for IqGuard<'a> {
+    fn drop(&mut self) {
+        if self.responded { return }
+
+        let id = if let Some(id) = self.iq.get_id() { id } else { return; };
+
+        let mut response = xml::Element::new("iq".into(), Some(ns::JABBER_CLIENT.into()),
+                                             vec![("id".into(), None, id.into()),
+                                                  ("type".into(), None, "error".into())]);
+
+        if let Some(from) = self.iq.get_from() {
+            response.set_attribute("to".into(), None, from.into());
+        }
+
+        response.tag(xml::Element::new("error".into(), Some(ns::JABBER_CLIENT.into()),
+                                       vec![("type".into(), None, "cancel".into())]))
+                .tag(xml::Element::new("service-unavailable".into(), Some(ns::STANZAS.into()),
+                                       vec![]));
+        let _ = self.handler.send(response);
+    }
+}
+
+impl<'a> IqGuard<'a> {
+    pub fn respond(&mut self, response: &stanzas::Iq) {
+        // TODO: Check attributes of provided response
+        self.responded = true;
+        let _ = self.handler.send(response);
+    }
+}
+
+pub enum Event<'a> {
+    IqRequest(IqGuard<'a>),
+    IqResponse(stanzas::Iq),
+    Message(stanzas::Message),
+    Presence(stanzas::Presence),
+    StreamError(xml::Element),
+    StreamClosed
+}
 
 struct XmppHandler {
     username: String,
@@ -75,14 +127,18 @@ impl XmppStream {
         self.handler.start_stream()
     }
 
-    pub fn handle(&mut self) -> io::Result<()> {
+    pub fn send<T: XmppSend>(&mut self, data: T) -> io::Result<()> {
+        self.handler.send(data)
+    }
+
+    pub fn handle(&mut self) -> Event {
+        let builder = &mut self.builder;
+        let handler = &mut self.handler;
         loop {
-            let string = {
-                let socket = &mut self.handler.socket;
-                try!(socket.read_str())
+            let string =  match handler.socket.read_str() {
+                Ok(s) => s,
+                Err(_) => return Event::StreamClosed
             };
-            let builder = &mut self.builder;
-            let handler = &mut self.handler;
             self.parser.feed_str(&string);
             for event in &mut self.parser {
                 match event {
@@ -109,14 +165,43 @@ impl XmppStream {
                         ns: Some(ref ns), ..
                     })) if *name == "stream" && *ns == ns::STREAMS => {
                         println!("In: Stream end");
-                        try!(handler.close_stream());
-                        return Ok(())
+                        let _ = handler.close_stream();
+                        return Event::StreamClosed;
                     }
-                    event => {
-                        match builder.handle_event(event) {
-                            Some(Ok(e)) => { try!(handler.handle_stanza(e)); }
-                            Some(Err(e)) => println!("{}", e),
-                            None => (),
+                    event => match builder.handle_event(event) {
+                        None => (),
+                        Some(Ok(e)) => {
+                            println!("In: {}", e);
+                            let stanza = match stanzas::AStanza::from_element(e) {
+                                Ok(s) => s,
+                                Err(e) => {
+                                    // TODO: Handle IO errors
+                                    handler.handle_non_stanza(e);
+                                    continue;
+                                }
+                            };
+                            match stanza {
+                                AStanza::MessageStanza(msg) => return Event::Message(msg),
+                                AStanza::PresenceStanza(pres) => return Event::Presence(pres),
+                                AStanza::IqStanza(iq) => {
+                                    match iq.get_type() {
+                                        None => continue,
+                                        Some(IqType::Result)
+                                        | Some(IqType::Error) => return Event::IqResponse(iq),
+                                        Some(IqType::Set)
+                                        | Some(IqType::Get) => return Event::IqRequest(IqGuard {
+                                            iq: iq,
+                                            responded: false,
+                                            handler: handler
+                                        })
+                                    }
+                                }
+                            }
+                        }
+                        Some(Err(e)) => {
+                            println!("{}", e);
+                            let _ = handler.close_stream();
+                            return Event::StreamClosed;
                         }
                     }
                 }
@@ -143,8 +228,7 @@ impl XmppHandler {
         self.socket.flush()
     }
 
-    fn handle_stanza(&mut self, stanza: xml::Element) -> io::Result<()> {
-        println!("In: {}", stanza);
+    fn handle_non_stanza(&mut self, stanza: xml::Element) -> io::Result<()> {
         if stanza.ns.as_ref().map(|x| &x[..]) == Some(ns::STREAMS) && stanza.name == "features" {
             return self.handle_features(stanza);
         }

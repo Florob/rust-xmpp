@@ -38,6 +38,7 @@ impl fmt::Display for PresenceType {
     }
 }
 
+#[derive(Clone)]
 pub struct Presence { elem: xml::Element }
 
 impl_Stanza!("presence", Presence, PresenceType,

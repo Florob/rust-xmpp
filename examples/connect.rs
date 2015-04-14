@@ -10,5 +10,9 @@ fn main() {
             return;
         }
     }
-    println!("{:?}", stream.handle());
+    loop {
+        if let xmpp::Event::StreamClosed = stream.handle() {
+            break;
+        }
+    }
 }

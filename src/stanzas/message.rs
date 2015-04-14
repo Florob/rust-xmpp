@@ -32,6 +32,7 @@ impl fmt::Display for MessageType {
     }
 }
 
+#[derive(Clone)]
 pub struct Message { elem: xml::Element }
 
 impl_Stanza!("message", Message, MessageType,

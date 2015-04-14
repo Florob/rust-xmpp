@@ -11,3 +11,5 @@ pub const STREAMS: &'static str = "http://etherx.jabber.org/streams";
 pub const FEATURE_BIND: &'static str = "urn:ietf:params:xml:ns:xmpp-bind";
 pub const FEATURE_SASL: &'static str = "urn:ietf:params:xml:ns:xmpp-sasl";
 pub const FEATURE_TLS: &'static str = "urn:ietf:params:xml:ns:xmpp-tls";
+
+pub const STANZAS: &'static str = "urn:ietf:params:xml:ns:xmpp-stanzas";
