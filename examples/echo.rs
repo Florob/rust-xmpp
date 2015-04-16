@@ -1,5 +1,6 @@
 extern crate xmpp;
 use xmpp::XmppStream;
+use xmpp::stanzas::Stanza;
 
 fn main() {
     let mut stream = XmppStream::new("alice", "localhost", "test");
@@ -15,12 +16,9 @@ fn main() {
             xmpp::Event::StreamClosed => break,
             xmpp::Event::Message(msg) => {
                 let mut response = msg.clone();
-                if let Some(to) = response.remove_attribute("from", None) {
-                    response.set_attribute("to".into(), None, to);
-                }
-                if let Some(from) = response.remove_attribute("to", None) {
-                    response.set_attribute("from".into(), None, from);
-                }
+                let to = response.from().map(|x| x.into());
+                response.set_to(to);
+                response.set_from(None);
                 response
             }
             _ => continue

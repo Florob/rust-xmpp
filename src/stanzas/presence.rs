@@ -1,5 +1,5 @@
 // rust-xmpp
-// Copyright (c) 2014 Florian Zeitz
+// Copyright (c) 2014-2015 Florian Zeitz
 //
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
@@ -7,9 +7,7 @@
 use xml;
 use ns;
 
-use std::fmt;
-
-use super::Stanza;
+use super::{Stanza, StanzaType};
 
 #[derive(Copy, Clone)]
 pub enum PresenceType {
@@ -23,18 +21,18 @@ pub enum PresenceType {
     Available
 }
 
-impl fmt::Display for PresenceType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(match *self {
-            PresenceType::Error => "error",
-            PresenceType::Probe => "probe",
-            PresenceType::Subscribe => "subscribe",
-            PresenceType::Subscribed => "subscribed",
-            PresenceType::Unavailable => "unavailable",
-            PresenceType::Unsubscribe => "unsubscribe",
-            PresenceType::Unsubscribed => "unsubscribed",
-            PresenceType::Available => "available"
-        })
+impl StanzaType for PresenceType {
+    fn attr_string(&self) -> Option<&'static str> {
+        match *self {
+            PresenceType::Error => Some("error"),
+            PresenceType::Probe => Some("probe"),
+            PresenceType::Subscribe => Some("subscribe"),
+            PresenceType::Subscribed => Some("subscribed"),
+            PresenceType::Unavailable => Some("unavailable"),
+            PresenceType::Unsubscribe => Some("unsubscribe"),
+            PresenceType::Unsubscribed => Some("unsubscribed"),
+            PresenceType::Available => None
+        }
     }
 }
 
@@ -58,13 +56,13 @@ impl_Stanza!("presence", Presence, PresenceType,
 
 impl Presence {
     pub fn new(ty: PresenceType, id: String) -> Presence {
-        let elem = if let PresenceType::Available = ty {
+        let elem = if let Some(ty) = ty.attr_string() {
             xml::Element::new("presence".into(), Some(ns::JABBER_CLIENT.into()),
-                              vec![("id".into(), None, id)])
+                              vec![("type".into(), None, ty.into()),
+                                   ("id".into(), None, id)])
         } else {
             xml::Element::new("presence".into(), Some(ns::JABBER_CLIENT.into()),
-                              vec![("type".into(), None, ty.to_string()),
-                                   ("id".into(), None, id)])
+                              vec![("id".into(), None, id)])
         };
         Presence { elem: elem }
     }

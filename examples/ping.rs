@@ -18,16 +18,12 @@ fn main() {
         match stream.handle() {
             xmpp::Event::StreamClosed => break,
             xmpp::Event::IqRequest(mut iq) => {
-                if let Some(IqType::Get) = iq.get_type() {
+                if let Some(IqType::Get) = iq.stanza_type() {
                     if let Some(_) = iq.get_child("ping", Some(NS_PING)) {
-                        let id = if let Some(id) = iq.get_id() { id.into() } else { continue };
+                        let id = if let Some(id) = iq.id() { id.into() } else { continue };
+                        let to = iq.from().map(|x| x.into());
                         let mut response = Iq::new(IqType::Result, id);
-                        if let Some(to) = iq.get_from() {
-                            response.set_attribute("to".into(), None, to.into());
-                        }
-                        if let Some(from) = iq.get_to() {
-                            response.set_attribute("from".into(), None, from.into());
-                        }
+                        response.set_to(to);
                         response.tag(xml::Element::new("pong".into(), Some(NS_PING.into()),
                                                        vec![]));
                         iq.respond(&response);

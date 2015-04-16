@@ -53,13 +53,13 @@ impl<'a> Drop for IqGuard<'a> {
     fn drop(&mut self) {
         if self.responded { return }
 
-        let id = if let Some(id) = self.iq.get_id() { id } else { return; };
+        let id = if let Some(id) = self.iq.id() { id } else { return; };
 
         let mut response = xml::Element::new("iq".into(), Some(ns::JABBER_CLIENT.into()),
                                              vec![("id".into(), None, id.into()),
                                                   ("type".into(), None, "error".into())]);
 
-        if let Some(from) = self.iq.get_from() {
+        if let Some(from) = self.iq.from() {
             response.set_attribute("to".into(), None, from.into());
         }
 
@@ -184,7 +184,7 @@ impl XmppStream {
                                 AStanza::MessageStanza(msg) => return Event::Message(msg),
                                 AStanza::PresenceStanza(pres) => return Event::Presence(pres),
                                 AStanza::IqStanza(iq) => {
-                                    match iq.get_type() {
+                                    match iq.stanza_type() {
                                         None => continue,
                                         Some(IqType::Result)
                                         | Some(IqType::Error) => return Event::IqResponse(iq),
