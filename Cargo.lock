@@ -3,14 +3,14 @@ name = "rust-xmpp"
 version = "0.0.0"
 dependencies = [
  "RustyXML 0.1.1 (git+https://github.com/Florob/RustyXML)",
- "openssl 0.5.5 (git+https://github.com/sfackler/rust-openssl)",
- "rustc-serialize 0.3.12 (git+https://github.com/rust-lang/rustc-serialize)",
+ "openssl 0.6.1 (git+https://github.com/sfackler/rust-openssl)",
+ "rustc-serialize 0.3.13 (git+https://github.com/rust-lang/rustc-serialize)",
 ]
 
 [[package]]
 name = "RustyXML"
 version = "0.1.1"
-source = "git+https://github.com/Florob/RustyXML#caee6b1c839db3d4e3d00631a85232d58cc7f151"
+source = "git+https://github.com/Florob/RustyXML#4e344549136ff534f0dc4ced86f31ef79f5f52e0"
 
 [[package]]
 name = "bitflags"
@@ -24,41 +24,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "lazy_static"
-version = "0.1.8"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "libc"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "libressl-pnacl-sys"
-version = "2.1.4"
+version = "2.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "pnacl-build-helper 1.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pnacl-build-helper 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "openssl"
-version = "0.5.5"
-source = "git+https://github.com/sfackler/rust-openssl#ed97463346cd21976d3cc75a3347113d9f77063c"
+version = "0.6.1"
+source = "git+https://github.com/sfackler/rust-openssl#bce84a6d53312166499015cef31bd80476f88ad3"
 dependencies = [
  "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "openssl-sys 0.5.5 (git+https://github.com/sfackler/rust-openssl)",
+ "lazy_static 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "openssl-sys 0.6.1 (git+https://github.com/sfackler/rust-openssl)",
 ]
 
 [[package]]
 name = "openssl-sys"
-version = "0.5.5"
-source = "git+https://github.com/sfackler/rust-openssl#ed97463346cd21976d3cc75a3347113d9f77063c"
+version = "0.6.1"
+source = "git+https://github.com/sfackler/rust-openssl#bce84a6d53312166499015cef31bd80476f88ad3"
 dependencies = [
  "gcc 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "libressl-pnacl-sys 2.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libressl-pnacl-sys 2.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -69,11 +69,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "pnacl-build-helper"
-version = "1.3.2"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "tempdir 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rand"
+version = "0.3.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "rustc-serialize"
-version = "0.3.12"
-source = "git+https://github.com/rust-lang/rustc-serialize#c9a9772c906d667c0c6e8397c97bb635de649e37"
+version = "0.3.13"
+source = "git+https://github.com/rust-lang/rustc-serialize#6f77e4160c3fbacda34e9e9126996fc8d4493711"
+
+[[package]]
+name = "tempdir"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
