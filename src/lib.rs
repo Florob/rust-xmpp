@@ -53,20 +53,11 @@ impl<'a> Drop for IqGuard<'a> {
     fn drop(&mut self) {
         if self.responded { return }
 
-        let id = if let Some(id) = self.iq.id() { id } else { return; };
+        // Don't respond to IQs without an id attribute
+        if let None = self.iq.id() { return; };
 
-        let mut response = xml::Element::new("iq".into(), Some(ns::JABBER_CLIENT.into()),
-                                             vec![("id".into(), None, id.into()),
-                                                  ("type".into(), None, "error".into())]);
-
-        if let Some(from) = self.iq.from() {
-            response.set_attribute("to".into(), None, from.into());
-        }
-
-        response.tag(xml::Element::new("error".into(), Some(ns::JABBER_CLIENT.into()),
-                                       vec![("type".into(), None, "cancel".into())]))
-                .tag(xml::Element::new("service-unavailable".into(), Some(ns::STANZAS.into()),
-                                       vec![]));
+        let response = self.iq.error_reply(stanzas::ErrorType::Cancel,
+                                           stanzas::DefinedCondition::ServiceUnavailable, None);
         let _ = self.handler.send(response);
     }
 }
