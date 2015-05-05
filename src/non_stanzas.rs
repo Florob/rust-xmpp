@@ -72,3 +72,87 @@ impl<'a> fmt::Display for AuthResponse<'a> {
 }
 
 impl<'a> XmppSend for AuthResponse<'a> {}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+pub enum DefinedCondition {
+    BadFormat,
+    BadNamespacePrefix,
+    Conflict,
+    ConnectionTimeout,
+    HostGone,
+    HostUnknown,
+    ImproperAddressing,
+    InternalServerError,
+    InvalidFrom,
+    InvalidId,
+    InvalidNamespace,
+    InvalidXml,
+    NotAuthorized,
+    NotWellFormed,
+    PolicyViolation,
+    RemoteConnectionFailed,
+    Reset,
+    ResourceConstraint,
+    RestrictedXml,
+    SeeOtherHost(String),
+    SystemShutdown,
+    UndefinedCondition,
+    UnsupportedEncoding,
+    UnsupportedStanzaType,
+    UnsupportedVersion,
+}
+
+impl fmt::Display for DefinedCondition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let name = match *self {
+            DefinedCondition::BadFormat => "bad-format",
+            DefinedCondition::BadNamespacePrefix => "bad-namespace-prefix",
+            DefinedCondition::Conflict => "conflict",
+            DefinedCondition::ConnectionTimeout => "connection-timeout",
+            DefinedCondition::HostGone => "host-gone",
+            DefinedCondition::HostUnknown => "host-unknown",
+            DefinedCondition::ImproperAddressing => "improper-addressing",
+            DefinedCondition::InternalServerError => "internal-server-error",
+            DefinedCondition::InvalidFrom => "invalid-from",
+            DefinedCondition::InvalidId => "invalid-id",
+            DefinedCondition::InvalidNamespace => "invalid-namespace",
+            DefinedCondition::InvalidXml => "invalid-xml",
+            DefinedCondition::NotAuthorized => "not-authorized",
+            DefinedCondition::NotWellFormed => "not-well-formed",
+            DefinedCondition::PolicyViolation => "policy-violation",
+            DefinedCondition::RemoteConnectionFailed => "remote-connection-failed",
+            DefinedCondition::Reset => "reset",
+            DefinedCondition::ResourceConstraint => "resource-constraint",
+            DefinedCondition::RestrictedXml => "restricted-xml",
+            DefinedCondition::SeeOtherHost(ref host) => {
+                return write!(f, "<see-other-host xmlns='{}'>{}</see-other-host>",
+                              ns::STREAM_ERRORS, host);
+            }
+            DefinedCondition::SystemShutdown => "system-shutdown",
+            DefinedCondition::UndefinedCondition => "undefined-condition",
+            DefinedCondition::UnsupportedEncoding => "unsupported-encoding",
+            DefinedCondition::UnsupportedStanzaType => "unsupported-stanza-type",
+            DefinedCondition::UnsupportedVersion => "unsupported-version"
+        };
+        write!(f, "<{} xmlns='{}'/>", name, ns::STREAM_ERRORS)
+    }
+}
+
+#[derive(Debug)]
+pub struct StreamError<'a> {
+    pub cond: DefinedCondition,
+    pub text: Option<&'a str>
+}
+
+impl<'a> fmt::Display for StreamError<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "<stream:error>{}", self.cond));
+        if let Some(text) = self.text {
+            try!(write!(f, "<text xmlns='{}'>{}</text>", ns::STREAM_ERRORS, text));
+        }
+        write!(f, "</stream:error>")
+    }
+}
+
+impl<'a> XmppSend for StreamError<'a> {}

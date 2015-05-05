@@ -20,7 +20,8 @@ use rustc_serialize::base64::{FromBase64, ToBase64};
 
 use auth::Authenticator;
 use auth::{PlainAuth, ScramAuth};
-use non_stanzas::{AuthStart, AuthResponse, StreamStart, StreamEnd, StartTls};
+use non_stanzas::{AuthStart, AuthResponse, DefinedCondition, StreamStart, StreamEnd};
+use non_stanzas::{StreamError, StartTls};
 use read_str::ReadString;
 use stanzas::{AStanza, Stanza, IqType};
 use xmpp_send::XmppSend;
@@ -79,6 +80,7 @@ struct XmppHandler {
     username: String,
     password: String,
     domain: String,
+    closed: bool,
     socket: XmppSocket,
     authenticator: Option<Box<Authenticator + 'static>>
 }
@@ -98,6 +100,7 @@ impl XmppStream {
                 username: user.to_string(),
                 password: password.to_string(),
                 domain: domain.to_string(),
+                closed: false,
                 socket: XmppSocket::NoSock,
                 authenticator: None
             }
@@ -162,8 +165,9 @@ impl XmppStream {
                             let stanza = match stanzas::AStanza::from_element(e) {
                                 Ok(s) => s,
                                 Err(e) => {
-                                    // TODO: Handle IO errors
-                                    handler.handle_non_stanza(e);
+                                    // For IO errors we should return StreamClosed
+                                    // in the next iteration
+                                    let _ = handler.handle_non_stanza(e);
                                     continue;
                                 }
                             };
@@ -187,8 +191,14 @@ impl XmppStream {
                         }
                         Some(Err(e)) => {
                             println!("{}", e);
+                            let _ = handler.send(StreamError {
+                                cond: DefinedCondition::InvalidXml,
+                                text: None
+                            });
                             let _ = handler.close_stream();
-                            return Event::StreamClosed;
+                            // Wait for remote to close stream
+                            // TODO: Avoid waiting forever
+                            continue;
                         }
                     }
                 }
@@ -206,7 +216,12 @@ impl XmppHandler {
     }
 
     fn close_stream(&mut self) -> io::Result<()> {
-        self.send(StreamEnd)
+        if !self.closed {
+            self.closed = true;
+            self.send(StreamEnd)
+        } else {
+            Ok(())
+        }
     }
 
     fn send<T: XmppSend>(&mut self, data: T) -> io::Result<()> {

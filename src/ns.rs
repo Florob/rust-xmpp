@@ -13,3 +13,4 @@ pub const FEATURE_SASL: &'static str = "urn:ietf:params:xml:ns:xmpp-sasl";
 pub const FEATURE_TLS: &'static str = "urn:ietf:params:xml:ns:xmpp-tls";
 
 pub const STANZA_ERRORS: &'static str = "urn:ietf:params:xml:ns:xmpp-stanzas";
+pub const STREAM_ERRORS: &'static str = "urn:ietf:params:xml:ns:xmpp-streams";
