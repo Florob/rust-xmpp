@@ -7,10 +7,6 @@
 #![crate_name = "xmpp"]
 #![crate_type = "lib"]
 
-// These are unsable for now
-#![feature(unicode)]
-
-extern crate unicode;
 extern crate rustc_serialize;
 extern crate openssl;
 extern crate xml;
