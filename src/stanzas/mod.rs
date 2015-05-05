@@ -60,42 +60,42 @@ pub enum DefinedCondition {
 }
 
 impl DefinedCondition {
-    fn element(&self) -> xml::Element {
-        fn make_cond(name: &str) -> xml::Element {
-            xml::Element::new(name.into(), Some(ns::STANZAS.into()), vec![])
-        }
-        match *self {
-            DefinedCondition::BadRequest => make_cond("bad-request"),
-            DefinedCondition::Conflict => make_cond("conflict"),
-            DefinedCondition::FeatureNotImplemented => make_cond("feature-not-implemented"),
-            DefinedCondition::Forbidden => make_cond("forbidden"),
-            DefinedCondition::Gone(ref g) => {
-                let mut gone = make_cond("gone");
-                gone.text(g.clone());
-                gone
+    fn element(self) -> xml::Element {
+        let name = match self {
+            DefinedCondition::BadRequest => "bad-request",
+            DefinedCondition::Conflict => "conflict",
+            DefinedCondition::FeatureNotImplemented => "feature-not-implemented",
+            DefinedCondition::Forbidden => "forbidden",
+            DefinedCondition::Gone(g) => {
+                let mut gone = xml::Element::new("gone".into(),
+                                                 Some(ns::STANZA_ERRORS.into()), vec![]);
+                gone.text(g);
+                return gone;
             }
-            DefinedCondition::InternalServerError => make_cond("internal-server-error"),
-            DefinedCondition::ItemNotFound => make_cond("item-not-found"),
-            DefinedCondition::JidMalformed => make_cond("jid-malformed"),
-            DefinedCondition::NotAcceptable => make_cond("not-acceptable"),
-            DefinedCondition::NotAllowed => make_cond("not-allowed"),
-            DefinedCondition::NotAuthorized => make_cond("not-authorized"),
-            DefinedCondition::PolicyViolation => make_cond("policy-violation"),
-            DefinedCondition::RecipientUnavailable => make_cond("recipient-unavailable"),
-            DefinedCondition::Redirect(ref r) => {
-                let mut redirect = make_cond("redirect");
-                redirect.text(r.clone());
-                redirect
+            DefinedCondition::InternalServerError => "internal-server-error",
+            DefinedCondition::ItemNotFound => "item-not-found",
+            DefinedCondition::JidMalformed => "jid-malformed",
+            DefinedCondition::NotAcceptable => "not-acceptable",
+            DefinedCondition::NotAllowed => "not-allowed",
+            DefinedCondition::NotAuthorized => "not-authorized",
+            DefinedCondition::PolicyViolation => "policy-violation",
+            DefinedCondition::RecipientUnavailable => "recipient-unavailable",
+            DefinedCondition::Redirect(r) => {
+                let mut redirect= xml::Element::new("redirect".into(),
+                                                    Some(ns::STANZA_ERRORS.into()), vec![]);
+                redirect.text(r);
+                return redirect;
             }
-            DefinedCondition::RegistrationRequired => make_cond("registration-required"),
-            DefinedCondition::RemoteServerNotFound => make_cond("remote-server-not-found"),
-            DefinedCondition::RemoteServerTimeout => make_cond("remote-server-timeout"),
-            DefinedCondition::ResourceConstraint => make_cond("resource-constraint"),
-            DefinedCondition::ServiceUnavailable => make_cond("service-unavailable"),
-            DefinedCondition::SubscriptionRequired => make_cond("subscription-required"),
-            DefinedCondition::UndefinedCondition => make_cond("undefined-condition"),
-            DefinedCondition::UnexpectedRequest => make_cond("unexpected-request")
-        }
+            DefinedCondition::RegistrationRequired => "registration-required",
+            DefinedCondition::RemoteServerNotFound => "remote-server-not-found",
+            DefinedCondition::RemoteServerTimeout => "remote-server-timeout",
+            DefinedCondition::ResourceConstraint => "resource-constraint",
+            DefinedCondition::ServiceUnavailable => "service-unavailable",
+            DefinedCondition::SubscriptionRequired => "subscription-required",
+            DefinedCondition::UndefinedCondition => "undefined-condition",
+            DefinedCondition::UnexpectedRequest => "unexpected-request"
+        };
+        xml::Element::new(name.into(), Some(ns::STANZA_ERRORS.into()), vec![])
     }
 }
 
@@ -219,7 +219,7 @@ macro_rules! impl_Stanza(
                                      .tag_stay(cond.element());
                     if let Some(text) = text {
                         error.tag(xml::Element::new("text".into(),
-                                                    Some(ns::STANZAS.into()), vec![]))
+                                                    Some(ns::STANZA_ERRORS.into()), vec![]))
                              .text(text);
                     }
                 }
