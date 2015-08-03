@@ -5,7 +5,7 @@
 // Please see the COPYING file for more information.
 
 use std::io;
-use std::io::{Write, BufStream};
+use std::io::{Write, BufReader};
 use std::mem;
 use std::net::TcpStream;
 use openssl::ssl::{SslContext, SslStream, SslMethod};
@@ -13,16 +13,15 @@ use openssl::ssl::{SslContext, SslStream, SslMethod};
 use read_str::ReadString;
 
 pub enum XmppSocket {
-    Tcp(BufStream<TcpStream>),
-    Tls(BufStream<SslStream<TcpStream>>),
+    Tcp(BufReader<TcpStream>, TcpStream),
+    Tls(BufReader<SslStream<TcpStream>>, SslStream<TcpStream>),
     NoSock
 }
 
 impl XmppSocket {
     pub fn starttls(&mut self) -> io::Result<()> {
         let socket = mem::replace(self, XmppSocket::NoSock);
-        if let XmppSocket::Tcp(sock) = socket {
-            let sock = try!(sock.into_inner());
+        if let XmppSocket::Tcp(_, sock) = socket {
             let ctx = match SslContext::new(SslMethod::Sslv23) {
                 Ok(ctx) => ctx,
                 Err(_) => return Err(io::Error::new(io::ErrorKind::Other,
@@ -33,7 +32,8 @@ impl XmppSocket {
                 Err(_) => return Err(io::Error::new(io::ErrorKind::Other,
                                                     "Could not create SSL stream"))
             };
-            *self = XmppSocket::Tls(BufStream::new(ssl));
+            let ssl_read = try!(ssl.try_clone());
+            *self = XmppSocket::Tls(BufReader::new(ssl_read), ssl);
         } else {
             panic!("No socket, or TLS already negotiated");
         }
@@ -44,16 +44,16 @@ impl XmppSocket {
 impl Write for XmppSocket {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match *self {
-            XmppSocket::Tcp(ref mut stream) => stream.write(buf),
-            XmppSocket::Tls(ref mut stream) => stream.write(buf),
+            XmppSocket::Tcp(_, ref mut stream) => stream.write(buf),
+            XmppSocket::Tls(_, ref mut stream) => stream.write(buf),
             XmppSocket::NoSock => panic!("No socket yet")
         }
     }
 
     fn flush(&mut self) -> io::Result<()> {
         match *self {
-            XmppSocket::Tcp(ref mut stream) => stream.flush(),
-            XmppSocket::Tls(ref mut stream) => stream.flush(),
+            XmppSocket::Tcp(_, ref mut stream) => stream.flush(),
+            XmppSocket::Tls(_, ref mut stream) => stream.flush(),
             XmppSocket::NoSock => panic!("No socket yet")
         }
     }
@@ -62,8 +62,8 @@ impl Write for XmppSocket {
 impl ReadString for XmppSocket {
     fn read_str(&mut self) -> io::Result<String> {
         match *self {
-            XmppSocket::Tcp(ref mut stream) => stream.read_str(),
-            XmppSocket::Tls(ref mut stream) => stream.read_str(),
+            XmppSocket::Tcp(ref mut stream, _) => stream.read_str(),
+            XmppSocket::Tls(ref mut stream, _) => stream.read_str(),
             XmppSocket::NoSock => panic!("Tried to read string before socket exists")
         }
     }

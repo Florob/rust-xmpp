@@ -12,7 +12,7 @@ extern crate openssl;
 extern crate xml;
 
 use std::io;
-use std::io::{Write, BufStream};
+use std::io::{Write, BufReader};
 use std::net::TcpStream;
 use std::ops::Deref;
 use rustc_serialize::base64;
@@ -112,8 +112,9 @@ impl XmppStream {
             let address = &self.handler.domain[..];
             try!(TcpStream::connect(&(address, 5222)))
         };
+        let stream_read = try!(stream.try_clone());
 
-        self.handler.socket = XmppSocket::Tcp(BufStream::new(stream));
+        self.handler.socket = XmppSocket::Tcp(BufReader::new(stream_read), stream);
         self.handler.start_stream()
     }
 

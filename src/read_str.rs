@@ -5,7 +5,7 @@
 // Please see the COPYING file for more information.
 
 use std::io;
-use std::io::{BufStream, BufRead, Read, Write};
+use std::io::BufRead;
 use std::str;
 
 // https://tools.ietf.org/html/rfc3629
@@ -38,7 +38,7 @@ pub trait ReadString {
     fn read_str(&mut self) -> io::Result<String>;
 }
 
-impl<S: Read + Write> ReadString for BufStream<S> {
+impl<T: BufRead> ReadString for T {
     fn read_str(&mut self) -> io::Result<String> {
         let (result, last) = {
             let available = try!(self.fill_buf());
