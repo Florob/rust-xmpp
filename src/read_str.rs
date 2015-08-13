@@ -56,10 +56,13 @@ impl<T: BufRead> ReadString for T {
                     break;
                 }
             }
-            (str::from_utf8(&available[..last]).unwrap().to_string(), last)
+            let res = str::from_utf8(&available[..last]);
+            (res.map(|x| x.to_string())
+                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData,
+                                            "stream did not contain valid UTF-8")), last)
         };
         self.consume(last);
 
-        Ok(result)
+        result
     }
 }
