@@ -232,16 +232,12 @@ impl XmppHandler {
     }
 
     fn handle_non_stanza(&mut self, stanza: xml::Element) -> io::Result<()> {
-        if stanza.ns.as_ref().map(|x| &x[..]) == Some(ns::STREAMS) && stanza.name == "features" {
-            return self.handle_features(stanza);
+        match stanza.ns.as_ref().map(|x| &x[..]) {
+            Some(ns::STREAMS) if stanza.name == "features" => self.handle_features(stanza),
+            Some(ns::FEATURE_TLS) => self.handle_starttls(stanza),
+            Some(ns::FEATURE_SASL) => self.handle_sasl(stanza),
+            _ => Ok(())
         }
-        if stanza.ns.as_ref().map(|x| &x[..]) == Some(ns::FEATURE_TLS) {
-            return self.handle_starttls(stanza);
-        }
-        if stanza.ns.as_ref().map(|x| &x[..]) == Some(ns::FEATURE_SASL) {
-            return self.handle_sasl(stanza);
-        }
-        Ok(())
     }
 
     fn handle_features(&mut self, features: xml::Element) -> io::Result<()> {
@@ -276,21 +272,17 @@ impl XmppHandler {
 
         for mech in mechs {
             let mech = mech.content_str();
-            let auth: Box<Authenticator> = match &mech[..] {
+            let mut auth: Box<Authenticator> = match &mech[..] {
                 "SCRAM-SHA-1" => Box::new(ScramAuth::new(self.username.clone(),
                                                          self.password.clone(), None)),
                 "PLAIN" => Box::new(PlainAuth::new(self.username.clone(),
                                                    self.password.clone(), None)),
                 _ => continue
             };
+            let initial = auth.initial().to_base64(base64::STANDARD);
             self.authenticator = Some(auth);
 
-            let result = {
-                let auth = self.authenticator.as_mut().unwrap();
-                auth.initial().to_base64(base64::STANDARD)
-            };
-
-            return self.send(AuthStart { mech: &mech, data: &result });
+            return self.send(AuthStart { mech: &mech, data: &initial });
         }
 
         Ok(())

@@ -103,7 +103,7 @@ pub trait StanzaType {
     fn attr_string(&self) -> Option<&'static str>;
 }
 
-pub trait Stanza {
+pub trait Stanza: Sized {
     type Ty: StanzaType;
 
     fn from_element(e: xml::Element) -> Result<Self, xml::Element>;
@@ -113,12 +113,12 @@ pub trait Stanza {
     fn to(&self) -> Option<&str>;
     fn from(&self) -> Option<&str>;
     fn id(&self) -> Option<&str>;
-    fn stanza_type(&self) -> Option< <Self as Stanza>::Ty>;
+    fn stanza_type(&self) -> Option<Self::Ty>;
 
     fn set_to(&mut self, to: Option<String>);
     fn set_from(&mut self, from: Option<String>);
     fn set_id(&mut self, id: Option<String>);
-    fn set_stanza_type(&mut self, ty: <Self as Stanza>::Ty);
+    fn set_stanza_type(&mut self, ty: Self::Ty);
 
     fn error_reply(&self, ty: ErrorType, cond: DefinedCondition, text: Option<String>) -> Self;
 }
