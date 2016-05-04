@@ -27,7 +27,7 @@ impl XmppSocket {
                 Err(_) => return Err(io::Error::new(io::ErrorKind::Other,
                                                     "Could not create SSL context"))
             };
-            let ssl = match SslStream::new(&ctx, sock) {
+            let ssl = match SslStream::connect(&ctx, sock) {
                 Ok(ssl) => ssl,
                 Err(_) => return Err(io::Error::new(io::ErrorKind::Other,
                                                     "Could not create SSL stream"))
