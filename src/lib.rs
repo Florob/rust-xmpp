@@ -72,6 +72,7 @@ pub enum Event<'a> {
     IqResponse(stanzas::Iq),
     Message(stanzas::Message),
     Presence(stanzas::Presence),
+    Bound,
     StreamError(xml::Element),
     StreamClosed
 }
@@ -82,7 +83,8 @@ struct XmppHandler {
     domain: String,
     closed: bool,
     socket: XmppSocket,
-    authenticator: Option<Box<Authenticator + 'static>>
+    authenticator: Option<Box<Authenticator + 'static>>,
+    pending_bind_id: Option<String>
 }
 
 pub struct XmppStream {
@@ -102,7 +104,8 @@ impl XmppStream {
                 domain: domain.to_string(),
                 closed: false,
                 socket: XmppSocket::NoSock,
-                authenticator: None
+                authenticator: None,
+                pending_bind_id: None
             }
         }
     }
@@ -178,6 +181,11 @@ impl XmppStream {
                                 AStanza::IqStanza(iq) => {
                                     match iq.stanza_type() {
                                         None => continue,
+                                        Some(IqType::Result)
+                                            if handler.pending_bind_id.as_ref()
+                                                .map(|pending_bind_id| iq.id().unwrap_or("") == pending_bind_id)
+                                                .unwrap_or(false) =>
+                                            return Event::Bound,
                                         Some(IqType::Result)
                                         | Some(IqType::Error) => return Event::IqResponse(iq),
                                         Some(IqType::Set)
@@ -332,8 +340,11 @@ impl XmppHandler {
     }
 
     fn handle_bind(&mut self) -> io::Result<()> {
-        let mut bind_iq = stanzas::Iq::new(stanzas::IqType::Set, "bind".into());
+        let id: String = "bind".into();
+
+        let mut bind_iq = stanzas::Iq::new(stanzas::IqType::Set, id.clone());
         bind_iq.tag(xml::Element::new("bind".into(), Some(ns::FEATURE_BIND.into()), vec![]));
+        self.pending_bind_id = Some(id);
         self.send(bind_iq)
     }
 }
