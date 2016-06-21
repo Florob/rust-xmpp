@@ -19,7 +19,7 @@ use rustc_serialize::base64;
 use rustc_serialize::base64::{FromBase64, ToBase64};
 
 use auth::Authenticator;
-use auth::{PlainAuth, ScramAuth};
+use auth::{PlainAuth, ScramAuth, AnonAuth};
 use non_stanzas::{AuthStart, AuthResponse, DefinedCondition, StreamStart, StreamEnd};
 use non_stanzas::{StreamError, StartTls};
 use read_str::ReadString;
@@ -277,6 +277,7 @@ impl XmppHandler {
                                                          self.password.clone(), None)),
                 "PLAIN" => Box::new(PlainAuth::new(self.username.clone(),
                                                    self.password.clone(), None)),
+                "ANONYMOUS" => Box::new(AnonAuth::new()),
                 _ => continue
             };
             let initial = auth.initial().to_base64(base64::STANDARD);
