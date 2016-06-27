@@ -184,12 +184,16 @@ impl XmppStream {
                                         None => continue,
                                         Some(IqType::Result)
                                             if handler.pending_bind_id.as_ref()
-                                                .map(|x| &x[..]) == iq.id() =>
-                                            return Event::Bound,
+                                            .map(|x| &x[..]) == iq.id() => {
+                                                handler.pending_bind_id = None;
+                                                return Event::Bound
+                                            },
                                         Some(IqType::Error)
                                             if handler.pending_bind_id.as_ref()
-                                                .map(|x| &x[..]) == iq.id() =>
-                                            return Event::BindError(iq),
+                                            .map(|x| &x[..]) == iq.id() => {
+                                                handler.pending_bind_id = None;
+                                                return Event::BindError(iq)
+                                            },
                                         Some(IqType::Result)
                                         | Some(IqType::Error) => return Event::IqResponse(iq),
                                         Some(IqType::Set)
