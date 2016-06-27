@@ -72,7 +72,8 @@ pub enum Event<'a> {
     IqResponse(stanzas::Iq),
     Message(stanzas::Message),
     Presence(stanzas::Presence),
-    Bound,
+    /// field 1: client JID
+    Bound(Option<String>),
     BindError(stanzas::Iq),
     StreamError(xml::Element),
     StreamClosed
@@ -186,7 +187,7 @@ impl XmppStream {
                                             if handler.pending_bind_id.as_ref()
                                             .map(|x| &x[..]) == iq.id() => {
                                                 handler.pending_bind_id = None;
-                                                return Event::Bound
+                                                return Event::Bound(iq.get_xmpp_bind_jid())
                                             },
                                         Some(IqType::Error)
                                             if handler.pending_bind_id.as_ref()

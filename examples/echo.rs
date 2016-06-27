@@ -21,7 +21,7 @@ fn main() {
                 response.set_from(None);
                 (Some(response), false)
             }
-            xmpp::Event::Bound => {
+            xmpp::Event::Bound(_jid) => {
                 (None, true)
             }
             _ => continue

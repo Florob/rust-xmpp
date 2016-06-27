@@ -51,4 +51,12 @@ impl Iq {
                                          ("id".into(), None, id)])
         }
     }
+
+    pub fn get_xmpp_bind_jid(&self) -> Option<String> {
+        let ns = Some(ns::FEATURE_BIND);
+        self.elem
+            .get_child("bind", ns)
+            .and_then(|bind| bind.get_child("jid", ns))
+            .map(|jid| jid.content_str())
+    }
 }
