@@ -73,6 +73,7 @@ pub enum Event<'a> {
     Message(stanzas::Message),
     Presence(stanzas::Presence),
     Bound,
+    BindError(stanzas::Iq),
     StreamError(xml::Element),
     StreamClosed
 }
@@ -185,6 +186,10 @@ impl XmppStream {
                                             if handler.pending_bind_id.as_ref()
                                                 .map(|x| &x[..]) == iq.id() =>
                                             return Event::Bound,
+                                        Some(IqType::Error)
+                                            if handler.pending_bind_id.as_ref()
+                                                .map(|x| &x[..]) == iq.id() =>
+                                            return Event::BindError(iq),
                                         Some(IqType::Result)
                                         | Some(IqType::Error) => return Event::IqResponse(iq),
                                         Some(IqType::Set)
