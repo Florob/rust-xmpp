@@ -6,9 +6,11 @@
 
 pub use self::plain::PlainAuth;
 pub use self::scram::ScramAuth;
+pub use self::anon::AnonAuth;
 
 pub mod plain;
 pub mod scram;
+pub mod anon;
 
 pub trait Authenticator {
     fn initial(&mut self) -> Vec<u8>;

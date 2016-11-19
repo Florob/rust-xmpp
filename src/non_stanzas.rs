@@ -53,8 +53,13 @@ pub struct AuthStart<'a> {
 
 impl<'a> fmt::Display for AuthStart<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let data = if self.data.len() > 0 {
+            self.data
+        } else {
+            "="
+        };
         write!(f, "<auth mechanism='{}' xmlns='{}'>{}</auth>",
-               self.mech, ns::FEATURE_SASL, self.data)
+               self.mech, ns::FEATURE_SASL, data)
     }
 }
 
