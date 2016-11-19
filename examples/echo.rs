@@ -1,6 +1,6 @@
 extern crate xmpp;
 use xmpp::XmppStream;
-use xmpp::stanzas::Stanza;
+use xmpp::stanzas::{Stanza, Presence, PresenceType};
 
 fn main() {
     let mut stream = XmppStream::new("alice", "localhost", "test");
@@ -12,17 +12,26 @@ fn main() {
         }
     }
     loop {
-        let response = match stream.handle() {
+        let (opt_response, send_presence) = match stream.handle() {
             xmpp::Event::StreamClosed => break,
             xmpp::Event::Message(msg) => {
                 let mut response = msg.clone();
                 let to = response.from().map(|x| x.into());
                 response.set_to(to);
                 response.set_from(None);
-                response
+                (Some(response), false)
+            }
+            xmpp::Event::Bound(_jid) => {
+                (None, true)
             }
             _ => continue
         };
-        stream.send(response);
+        match opt_response {
+            Some(response) => stream.send(response).unwrap(),
+            None => ()
+        }
+        if send_presence {
+            stream.send(Presence::new(PresenceType::Available, "".to_owned())).unwrap();
+        }
     }
 }
