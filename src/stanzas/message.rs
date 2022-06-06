@@ -33,18 +33,18 @@ impl StanzaType for MessageType {
 #[derive(Clone)]
 pub struct Message { elem: xml::Element }
 
-impl_Stanza!("message", Message, MessageType,
-    |ty: &str| {
-        match ty {
-            "normal" => Some(MessageType::Normal),
-            "headline" => Some(MessageType::Headline),
-            "chat" => Some(MessageType::Chat),
-            "groupchat" => Some(MessageType::Groupchat),
-            "error" => Some(MessageType::Error),
-            _ => None
-        }
+fn parse_type(ty: &str) -> Option<MessageType> {
+    match ty {
+        "normal" => Some(MessageType::Normal),
+        "headline" => Some(MessageType::Headline),
+        "chat" => Some(MessageType::Chat),
+        "groupchat" => Some(MessageType::Groupchat),
+        "error" => Some(MessageType::Error),
+        _ => None
     }
-, Some(MessageType::Normal));
+}
+
+impl_Stanza!("message", Message, MessageType, parse_type, Some(MessageType::Normal));
 
 impl Message {
     pub fn new(ty: MessageType, id: String) -> Message {

@@ -31,17 +31,17 @@ impl StanzaType for IqType {
 #[derive(Clone)]
 pub struct Iq { elem: xml::Element }
 
-impl_Stanza!("iq", Iq, IqType,
-    |ty: &str| {
-        match ty {
-            "get" => Some(IqType::Get),
-            "set" => Some(IqType::Set),
-            "result" => Some(IqType::Result),
-            "error" => Some(IqType::Error),
-            _ => None
-        }
+fn parse_type(ty: &str) -> Option<IqType> {
+    match ty {
+        "get" => Some(IqType::Get),
+        "set" => Some(IqType::Set),
+        "result" => Some(IqType::Result),
+        "error" => Some(IqType::Error),
+        _ => None
     }
-, None);
+}
+
+impl_Stanza!("iq", Iq, IqType, parse_type, None);
 
 impl Iq {
     pub fn new(ty: IqType, id: String) -> Iq {

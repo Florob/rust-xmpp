@@ -48,7 +48,7 @@ impl<'a> Drop for IqGuard<'a> {
         if self.responded { return }
 
         // Don't respond to IQs without an id attribute
-        if let None = self.iq.id() { return; };
+        if self.iq.id().is_none() { return; };
 
         let response = self.iq.error_reply(stanzas::ErrorType::Cancel,
                                            stanzas::DefinedCondition::ServiceUnavailable, None);

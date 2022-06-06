@@ -53,7 +53,7 @@ pub struct AuthStart<'a> {
 
 impl<'a> fmt::Display for AuthStart<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let data = if self.data.len() > 0 {
+        let data = if !self.data.is_empty() {
             self.data
         } else {
             "="

@@ -39,20 +39,20 @@ impl StanzaType for PresenceType {
 #[derive(Clone)]
 pub struct Presence { elem: xml::Element }
 
-impl_Stanza!("presence", Presence, PresenceType,
-    |ty: &str| {
-        match ty {
-            "error" => Some(PresenceType::Error),
-            "probe" => Some(PresenceType::Probe),
-            "subscribe" => Some(PresenceType::Subscribe),
-            "subscribed" => Some(PresenceType::Subscribed),
-            "unavailable" => Some(PresenceType::Unavailable),
-            "unsubscribe" => Some(PresenceType::Unsubscribe),
-            "unsubscribed" => Some(PresenceType::Unsubscribed),
-            _ => None
-        }
+fn parse_type(ty: &str) -> Option<PresenceType> {
+    match ty {
+        "error" => Some(PresenceType::Error),
+        "probe" => Some(PresenceType::Probe),
+        "subscribe" => Some(PresenceType::Subscribe),
+        "subscribed" => Some(PresenceType::Subscribed),
+        "unavailable" => Some(PresenceType::Unavailable),
+        "unsubscribe" => Some(PresenceType::Unsubscribe),
+        "unsubscribed" => Some(PresenceType::Unsubscribed),
+        _ => None
     }
-, Some(PresenceType::Available));
+}
+
+impl_Stanza!("presence", Presence, PresenceType, parse_type, Some(PresenceType::Available));
 
 impl Presence {
     pub fn new(ty: PresenceType, id: String) -> Presence {

@@ -19,7 +19,7 @@ fn main() {
             xmpp::Event::StreamClosed => break,
             xmpp::Event::IqRequest(mut iq) => {
                 if let Some(IqType::Get) = iq.stanza_type() {
-                    if let Some(_) = iq.get_child("ping", Some(NS_PING)) {
+                    if iq.get_child("ping", Some(NS_PING)).is_some() {
                         let id = if let Some(id) = iq.id() { id.into() } else { continue };
                         let to = iq.from().map(|x| x.into());
                         let mut response = Iq::new(IqType::Result, id);
