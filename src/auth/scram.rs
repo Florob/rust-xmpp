@@ -39,9 +39,9 @@ fn gen_nonce() -> Result<Vec<u8>, &'static str> {
 
     for c in nonce.iter_mut() {
         // Restrict output to printable ASCII, excluding '~'
-        *c = ( *c % (('~' as u8) - ('!' as u8)) ) + ('!' as u8);
+        *c = ( *c % (b'~' - b'!') ) + b'!';
         // Map occurences of ',' to '~'
-        if *c == (',' as u8) { *c = '~' as u8 }
+        if *c == b',' { *c = b'~' }
     }
     Ok(nonce)
 }
