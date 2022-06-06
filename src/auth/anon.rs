@@ -16,7 +16,7 @@ impl AnonAuth {
 }
 
 impl Authenticator for AnonAuth {
-    fn initial(&mut self) -> Vec<u8> {
-        vec![]
+    fn initial(&mut self) -> Result<Vec<u8>, &'static str> {
+        Ok(vec![])
     }
 }

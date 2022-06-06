@@ -23,7 +23,7 @@ impl PlainAuth {
 }
 
 impl Authenticator for PlainAuth {
-    fn initial(&mut self) -> Vec<u8> {
+    fn initial(&mut self) -> Result<Vec<u8>, &'static str> {
         let mut data: Vec<u8> = Vec::new();
         if let Some(ref authzid) = self.authzid {
             data.extend(authzid.bytes());
@@ -32,6 +32,6 @@ impl Authenticator for PlainAuth {
         data.extend(self.authcid.bytes());
         data.push(0);
         data.extend(self.passwd.bytes());
-        data
+        Ok(data)
     }
 }

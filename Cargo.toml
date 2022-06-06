@@ -7,11 +7,7 @@ authors = [ "florob@babelmonkeys.de" ]
 [lib]
 name = "xmpp"
 
-[dependencies.RustyXML]
-git = "https://github.com/Florob/RustyXML"
-
-[dependencies.openssl]
-git = "https://github.com/sfackler/rust-openssl"
-
-[dependencies.rustc-serialize]
-git = "https://github.com/rust-lang-nursery/rustc-serialize"
+[dependencies]
+RustyXML = "0.3.0"
+base64 = "0.13.0"
+openssl = "0.10.40"

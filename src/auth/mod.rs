@@ -13,7 +13,7 @@ pub mod scram;
 pub mod anon;
 
 pub trait Authenticator {
-    fn initial(&mut self) -> Vec<u8>;
+    fn initial(&mut self) -> Result<Vec<u8>, &'static str>;
     fn continuation(&mut self, _data: &[u8]) -> Result<Vec<u8>, &'static str> {
         Ok(Vec::new())
     }

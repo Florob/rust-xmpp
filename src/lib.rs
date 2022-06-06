@@ -7,7 +7,6 @@
 #![crate_name = "xmpp"]
 #![crate_type = "lib"]
 
-extern crate rustc_serialize;
 extern crate openssl;
 extern crate xml;
 
@@ -15,8 +14,6 @@ use std::io;
 use std::io::{Write, BufReader};
 use std::net::TcpStream;
 use std::ops::Deref;
-use rustc_serialize::base64;
-use rustc_serialize::base64::{FromBase64, ToBase64};
 
 use auth::Authenticator;
 use auth::{PlainAuth, ScramAuth, AnonAuth};
@@ -85,7 +82,7 @@ struct XmppHandler {
     domain: String,
     closed: bool,
     socket: XmppSocket,
-    authenticator: Option<Box<Authenticator + 'static>>,
+    authenticator: Option<Box<dyn Authenticator + 'static>>,
     pending_bind_id: Option<String>
 }
 
@@ -278,7 +275,7 @@ impl XmppHandler {
 
     fn handle_starttls(&mut self, starttls: xml::Element) -> io::Result<()> {
         if starttls.name == "proceed" {
-            try!(self.socket.starttls());
+            try!(self.socket.starttls(&self.domain));
             return self.start_stream();
         }
         Ok(())
@@ -289,7 +286,7 @@ impl XmppHandler {
 
         for mech in mechs {
             let mech = mech.content_str();
-            let mut auth: Box<Authenticator> = match &mech[..] {
+            let mut auth: Box<dyn Authenticator> = match &mech[..] {
                 "SCRAM-SHA-1" => Box::new(ScramAuth::new(self.username.clone(),
                                                          self.password.clone(), None)),
                 "PLAIN" => Box::new(PlainAuth::new(self.username.clone(),
@@ -297,7 +294,10 @@ impl XmppHandler {
                 "ANONYMOUS" => Box::new(AnonAuth::new()),
                 _ => continue
             };
-            let initial = auth.initial().to_base64(base64::STANDARD);
+            let initial = match auth.initial() {
+                Ok(initial) => base64::encode(initial),
+                Err(_) => continue,
+            };
             self.authenticator = Some(auth);
 
             return self.send(AuthStart { mech: &mech, data: &initial });
@@ -308,7 +308,7 @@ impl XmppHandler {
 
     fn handle_sasl(&mut self, sasl: xml::Element) -> io::Result<()> {
         if sasl.name == "challenge" {
-            let challenge = match sasl.content_str().from_base64() {
+            let challenge = match base64::decode(sasl.content_str()) {
                 Ok(c) => c,
                 Err(_) => return Ok(())
             };
@@ -324,12 +324,12 @@ impl XmppHandler {
                 }
             };
 
-            let data = result.to_base64(base64::STANDARD);
+            let data = base64::encode(result);
             return self.send(AuthResponse { data: &data });
         }
 
         if sasl.name == "success" {
-            let success = match sasl.content_str().from_base64() {
+            let success = match base64::decode(sasl.content_str()) {
                 Ok(c) => c,
                 Err(_) => return Ok(())
             };
