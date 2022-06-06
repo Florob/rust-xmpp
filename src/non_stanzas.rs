@@ -5,8 +5,8 @@
 // Please see the COPYING file for more information.
 
 use std::fmt;
-use ns;
-use xmpp_send::XmppSend;
+use crate::ns;
+use crate::xmpp_send::XmppSend;
 
 #[derive(Debug)]
 pub struct StreamStart<'a> {
@@ -152,9 +152,9 @@ pub struct StreamError<'a> {
 
 impl<'a> fmt::Display for StreamError<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "<stream:error>{}", self.cond));
+        write!(f, "<stream:error>{}", self.cond)?;
         if let Some(text) = self.text {
-            try!(write!(f, "<text xmlns='{}'>{}</text>", ns::STREAM_ERRORS, text));
+            write!(f, "<text xmlns='{}'>{}</text>", ns::STREAM_ERRORS, text)?;
         }
         write!(f, "</stream:error>")
     }

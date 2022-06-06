@@ -5,7 +5,7 @@
 // Please see the COPYING file for more information.
 
 use xml;
-use ns;
+use crate::ns;
 
 pub use self::iq::Iq;
 pub use self::iq::IqType;
@@ -200,7 +200,7 @@ macro_rules! impl_Stanza(
                 }
             }
 
-            fn error_reply(&self, ty: ::stanzas::ErrorType, cond: ::stanzas::DefinedCondition,
+            fn error_reply(&self, ty: crate::stanzas::ErrorType, cond: crate::stanzas::DefinedCondition,
                            text: Option<String>) -> $kind
             {
                 let to = self.from().map(|x| x.into());

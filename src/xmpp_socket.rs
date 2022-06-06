@@ -10,7 +10,7 @@ use std::mem;
 use std::net::TcpStream;
 use openssl::ssl::{SslConnector, SslStream, SslMethod};
 
-use read_str::ReadString;
+use crate::read_str::ReadString;
 
 pub enum XmppSocket {
     Tcp(BufReader<TcpStream>, TcpStream),

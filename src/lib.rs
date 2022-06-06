@@ -15,14 +15,14 @@ use std::io::{Write, BufReader};
 use std::net::TcpStream;
 use std::ops::Deref;
 
-use auth::Authenticator;
-use auth::{PlainAuth, ScramAuth, AnonAuth};
-use non_stanzas::{AuthStart, AuthResponse, DefinedCondition, StreamStart, StreamEnd};
-use non_stanzas::{StreamError, StartTls};
-use read_str::ReadString;
-use stanzas::{AStanza, Stanza, IqType};
-use xmpp_send::XmppSend;
-use xmpp_socket::XmppSocket;
+use crate::auth::Authenticator;
+use crate::auth::{PlainAuth, ScramAuth, AnonAuth};
+use crate::non_stanzas::{AuthStart, AuthResponse, DefinedCondition, StreamStart, StreamEnd};
+use crate::non_stanzas::{StreamError, StartTls};
+use crate::read_str::ReadString;
+use crate::stanzas::{AStanza, Stanza, IqType};
+use crate::xmpp_send::XmppSend;
+use crate::xmpp_socket::XmppSocket;
 
 mod auth;
 mod non_stanzas;
@@ -112,9 +112,9 @@ impl XmppStream {
     pub fn connect(&mut self) -> io::Result<()> {
         let stream = {
             let address = &self.handler.domain[..];
-            try!(TcpStream::connect(&(address, 5222)))
+            TcpStream::connect(&(address, 5222))?
         };
-        let stream_read = try!(stream.try_clone());
+        let stream_read = stream.try_clone()?;
 
         self.handler.socket = XmppSocket::Tcp(BufReader::new(stream_read), stream);
         self.handler.start_stream()
@@ -226,7 +226,7 @@ impl XmppHandler {
     fn start_stream(&mut self) -> io::Result<()> {
         let stream_start = StreamStart { to: &self.domain };
         println!("Out: {}", stream_start);
-        try!(stream_start.xmpp_send(&mut self.socket));
+        stream_start.xmpp_send(&mut self.socket)?;
         self.socket.flush()
     }
 
@@ -241,7 +241,7 @@ impl XmppHandler {
 
     fn send<T: XmppSend>(&mut self, data: T) -> io::Result<()> {
         println!("Out: {}", data);
-        try!(data.xmpp_send(&mut self.socket));
+        data.xmpp_send(&mut self.socket)?;
         self.socket.flush()
     }
 
@@ -275,7 +275,7 @@ impl XmppHandler {
 
     fn handle_starttls(&mut self, starttls: xml::Element) -> io::Result<()> {
         if starttls.name == "proceed" {
-            try!(self.socket.starttls(&self.domain));
+            self.socket.starttls(&self.domain)?;
             return self.start_stream();
         }
         Ok(())

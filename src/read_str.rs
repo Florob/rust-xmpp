@@ -41,7 +41,7 @@ pub trait ReadString {
 impl<T: BufRead> ReadString for T {
     fn read_str(&mut self) -> io::Result<String> {
         let (result, last) = {
-            let available = try!(self.fill_buf());
+            let available = self.fill_buf()?;
             let len = available.len();
             let mut last = if len < 3 { 0 } else { len - 3 };
             while last < len {

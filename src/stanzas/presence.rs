@@ -5,7 +5,7 @@
 // Please see the COPYING file for more information.
 
 use xml;
-use ns;
+use crate::ns;
 
 use super::{Stanza, StanzaType};
 

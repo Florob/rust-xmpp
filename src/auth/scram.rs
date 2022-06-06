@@ -96,7 +96,7 @@ impl ScramAuth {
 
 
         let data = check!(str::from_utf8(data).ok(), "SCRAM: Server sent non-UTF-8 data");
-        let (nonce, salt, iter) = try!(parse_server_first(data));
+        let (nonce, salt, iter) = parse_server_first(data)?;
 
         {
             let cnonce = match self.state {
