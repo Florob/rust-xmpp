@@ -57,20 +57,22 @@ fn parse_server_first<'a>(data: &'a str) -> Result<(&'a str, Vec<u8>, u16), &'st
     let mut salt = None;
     let mut iter: Option<u16> = None;
     for  sub in data.split(',') {
-        if sub.starts_with("r=") {
-            nonce = Some(&sub[2..]);
-        } else if sub.starts_with("s=") {
-            salt = match base64::decode(&sub[2..]).ok() {
-                None => return Err("SCRAM: Invalid base64 encoding for salt"),
-                s => s
-            };
-        } else if sub.starts_with("i=") {
-            iter = match sub[2..].parse().ok() {
-                None => return Err("SCRAM: Iteration count is not a number"),
-                it => it,
-            };
-        } else if sub.starts_with("m=") {
-            return Err("SCRAM: Unsupported mandatory extension found");
+        match sub.split_at(2) {
+            ("r=", r) => nonce = Some(r),
+            ("s=", s) => {
+                salt = match base64::decode(s).ok() {
+                    None => return Err("SCRAM: Invalid base64 encoding for salt"),
+                    s => s
+                };
+            },
+            ("i=", i) => {
+                iter = match i.parse().ok() {
+                    None => return Err("SCRAM: Iteration count is not a number"),
+                    it => it,
+                };
+            },
+            ("m=", _) => return Err("SCRAM: Unsupported mandatory extension found"),
+            _ => (),
         }
     }
 
