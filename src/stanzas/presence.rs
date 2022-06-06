@@ -64,6 +64,6 @@ impl Presence {
             xml::Element::new("presence".into(), Some(ns::JABBER_CLIENT.into()),
                               vec![("id".into(), None, id)])
         };
-        Presence { elem: elem }
+        Presence { elem }
     }
 }

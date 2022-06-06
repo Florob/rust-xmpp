@@ -196,9 +196,9 @@ impl XmppStream {
                                         | Some(IqType::Error) => return Event::IqResponse(iq),
                                         Some(IqType::Set)
                                         | Some(IqType::Get) => return Event::IqRequest(IqGuard {
-                                            iq: iq,
+                                            iq,
                                             responded: false,
-                                            handler: handler
+                                            handler
                                         })
                                     }
                                 }

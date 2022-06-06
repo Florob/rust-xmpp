@@ -84,9 +84,9 @@ fn parse_server_first<'a>(data: &'a str) -> Result<(&'a str, Vec<u8>, u16), &'st
 impl ScramAuth {
     pub fn new(authcid: String, passwd: String, authzid: Option<String>) -> ScramAuth {
         ScramAuth {
-            authcid: authcid,
-            passwd: passwd,
-            authzid: authzid,
+            authcid,
+            passwd,
+            authzid,
             state: State::Initial
         }
     }

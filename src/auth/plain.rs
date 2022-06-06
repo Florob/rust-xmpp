@@ -15,9 +15,9 @@ pub struct PlainAuth {
 impl PlainAuth {
     pub fn new(authcid: String, passwd: String, authzid: Option<String>) -> PlainAuth {
         PlainAuth {
-            authcid: authcid,
-            passwd: passwd,
-            authzid: authzid
+            authcid,
+            passwd,
+            authzid
         }
     }
 }
