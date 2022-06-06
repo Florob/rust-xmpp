@@ -4,8 +4,8 @@
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
 
-use xml;
 use crate::ns;
+use xml;
 
 pub use self::iq::Iq;
 pub use self::iq::IqType;
@@ -19,7 +19,7 @@ pub enum ErrorType {
     Cancel,
     Continue,
     Modify,
-    Wait
+    Wait,
 }
 
 impl ErrorType {
@@ -29,7 +29,7 @@ impl ErrorType {
             ErrorType::Cancel => "cancel",
             ErrorType::Continue => "continue",
             ErrorType::Modify => "modify",
-            ErrorType::Wait => "wait"
+            ErrorType::Wait => "wait",
         }
     }
 }
@@ -56,7 +56,7 @@ pub enum DefinedCondition {
     ServiceUnavailable,
     SubscriptionRequired,
     UndefinedCondition,
-    UnexpectedRequest
+    UnexpectedRequest,
 }
 
 impl DefinedCondition {
@@ -67,8 +67,8 @@ impl DefinedCondition {
             DefinedCondition::FeatureNotImplemented => "feature-not-implemented",
             DefinedCondition::Forbidden => "forbidden",
             DefinedCondition::Gone(g) => {
-                let mut gone = xml::Element::new("gone".into(),
-                                                 Some(ns::STANZA_ERRORS.into()), vec![]);
+                let mut gone =
+                    xml::Element::new("gone".into(), Some(ns::STANZA_ERRORS.into()), vec![]);
                 gone.text(g);
                 return gone;
             }
@@ -81,8 +81,8 @@ impl DefinedCondition {
             DefinedCondition::PolicyViolation => "policy-violation",
             DefinedCondition::RecipientUnavailable => "recipient-unavailable",
             DefinedCondition::Redirect(r) => {
-                let mut redirect= xml::Element::new("redirect".into(),
-                                                    Some(ns::STANZA_ERRORS.into()), vec![]);
+                let mut redirect =
+                    xml::Element::new("redirect".into(), Some(ns::STANZA_ERRORS.into()), vec![]);
                 redirect.text(r);
                 return redirect;
             }
@@ -93,7 +93,7 @@ impl DefinedCondition {
             DefinedCondition::ServiceUnavailable => "service-unavailable",
             DefinedCondition::SubscriptionRequired => "subscription-required",
             DefinedCondition::UndefinedCondition => "undefined-condition",
-            DefinedCondition::UnexpectedRequest => "unexpected-request"
+            DefinedCondition::UnexpectedRequest => "unexpected-request",
         };
         xml::Element::new(name.into(), Some(ns::STANZA_ERRORS.into()), vec![])
     }
@@ -124,7 +124,7 @@ pub trait Stanza: Sized {
 }
 
 macro_rules! impl_Stanza(
-    ($name: expr, $kind: ident, $ty: ty, $ty_some: expr, $ty_none: expr) => (
+    ($name: expr, $kind: ident, $ty: ty, $ty_some: expr, $ty_none: expr $(,)?) => (
         impl Stanza for $kind {
             type Ty = $ty;
             fn from_element(e: xml::Element) -> ::std::result::Result<$kind, xml::Element> {
@@ -249,7 +249,6 @@ macro_rules! impl_Stanza(
     );
 );
 
-
 // Has to be after impl_Stanza!
 mod iq;
 mod message;
@@ -258,21 +257,21 @@ mod presence;
 pub enum AStanza {
     IqStanza(Iq),
     MessageStanza(Message),
-    PresenceStanza(Presence)
+    PresenceStanza(Presence),
 }
 
 impl AStanza {
     pub fn from_element(e: xml::Element) -> Result<AStanza, xml::Element> {
         match e.ns {
             Some(ref ns) if *ns == ns::JABBER_CLIENT || *ns == ns::JABBER_SERVER => (),
-            _ => return Err(e)
+            _ => return Err(e),
         }
 
         match &e.name[..] {
             "iq" => Stanza::from_element(e).map(AStanza::IqStanza),
             "message" => Stanza::from_element(e).map(AStanza::MessageStanza),
             "presence" => Stanza::from_element(e).map(AStanza::PresenceStanza),
-            _ => Err(e)
+            _ => Err(e),
         }
     }
 }

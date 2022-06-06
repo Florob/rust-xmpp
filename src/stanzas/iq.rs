@@ -4,8 +4,8 @@
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
 
-use xml;
 use crate::ns;
+use xml;
 
 use super::{Stanza, StanzaType};
 
@@ -14,7 +14,7 @@ pub enum IqType {
     Set,
     Get,
     Result,
-    Error
+    Error,
 }
 
 impl StanzaType for IqType {
@@ -23,13 +23,15 @@ impl StanzaType for IqType {
             IqType::Set => "set",
             IqType::Get => "get",
             IqType::Result => "result",
-            IqType::Error => "error"
+            IqType::Error => "error",
         })
     }
 }
 
 #[derive(Clone)]
-pub struct Iq { elem: xml::Element }
+pub struct Iq {
+    elem: xml::Element,
+}
 
 fn parse_type(ty: &str) -> Option<IqType> {
     match ty {
@@ -37,7 +39,7 @@ fn parse_type(ty: &str) -> Option<IqType> {
         "set" => Some(IqType::Set),
         "result" => Some(IqType::Result),
         "error" => Some(IqType::Error),
-        _ => None
+        _ => None,
     }
 }
 
@@ -46,9 +48,14 @@ impl_Stanza!("iq", Iq, IqType, parse_type, None);
 impl Iq {
     pub fn new(ty: IqType, id: String) -> Iq {
         Iq {
-            elem: xml::Element::new("iq".into(), Some(ns::JABBER_CLIENT.into()),
-                                    vec![("type".into(), None, ty.attr_string().unwrap().into()),
-                                         ("id".into(), None, id)])
+            elem: xml::Element::new(
+                "iq".into(),
+                Some(ns::JABBER_CLIENT.into()),
+                vec![
+                    ("type".into(), None, ty.attr_string().unwrap().into()),
+                    ("id".into(), None, id),
+                ],
+            ),
         }
     }
 

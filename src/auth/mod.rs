@@ -4,13 +4,13 @@
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
 
+pub use self::anon::AnonAuth;
 pub use self::plain::PlainAuth;
 pub use self::scram::ScramAuth;
-pub use self::anon::AnonAuth;
 
+pub mod anon;
 pub mod plain;
 pub mod scram;
-pub mod anon;
 
 pub trait Authenticator {
     fn initial(&mut self) -> Result<Vec<u8>, &'static str>;

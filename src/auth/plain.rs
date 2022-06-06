@@ -9,7 +9,7 @@ use super::Authenticator;
 pub struct PlainAuth {
     authcid: String,
     authzid: Option<String>,
-    passwd: String
+    passwd: String,
 }
 
 impl PlainAuth {
@@ -17,7 +17,7 @@ impl PlainAuth {
         PlainAuth {
             authcid,
             passwd,
-            authzid
+            authzid,
         }
     }
 }

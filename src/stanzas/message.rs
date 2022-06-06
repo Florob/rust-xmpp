@@ -4,8 +4,8 @@
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
 
-use xml;
 use crate::ns;
+use xml;
 
 use super::{Stanza, StanzaType};
 
@@ -15,7 +15,7 @@ pub enum MessageType {
     Headline,
     Chat,
     Groupchat,
-    Error
+    Error,
 }
 
 impl StanzaType for MessageType {
@@ -25,13 +25,15 @@ impl StanzaType for MessageType {
             MessageType::Headline => "headline",
             MessageType::Chat => "chat",
             MessageType::Groupchat => "groupchat",
-            MessageType::Error => "error"
+            MessageType::Error => "error",
         })
     }
 }
 
 #[derive(Clone)]
-pub struct Message { elem: xml::Element }
+pub struct Message {
+    elem: xml::Element,
+}
 
 fn parse_type(ty: &str) -> Option<MessageType> {
     match ty {
@@ -40,18 +42,29 @@ fn parse_type(ty: &str) -> Option<MessageType> {
         "chat" => Some(MessageType::Chat),
         "groupchat" => Some(MessageType::Groupchat),
         "error" => Some(MessageType::Error),
-        _ => None
+        _ => None,
     }
 }
 
-impl_Stanza!("message", Message, MessageType, parse_type, Some(MessageType::Normal));
+impl_Stanza!(
+    "message",
+    Message,
+    MessageType,
+    parse_type,
+    Some(MessageType::Normal),
+);
 
 impl Message {
     pub fn new(ty: MessageType, id: String) -> Message {
         Message {
-            elem: xml::Element::new("message".into(), Some(ns::JABBER_CLIENT.into()),
-                                    vec![("type".into(), None, ty.attr_string().unwrap().into()),
-                                         ("id".into(), None, id)])
+            elem: xml::Element::new(
+                "message".into(),
+                Some(ns::JABBER_CLIENT.into()),
+                vec![
+                    ("type".into(), None, ty.attr_string().unwrap().into()),
+                    ("id".into(), None, id),
+                ],
+            ),
         }
     }
 }

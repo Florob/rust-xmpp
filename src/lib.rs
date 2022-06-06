@@ -11,47 +11,56 @@ extern crate openssl;
 extern crate xml;
 
 use std::io;
-use std::io::{Write, BufReader};
+use std::io::{BufReader, Write};
 use std::net::TcpStream;
 use std::ops::Deref;
 
 use crate::auth::Authenticator;
-use crate::auth::{PlainAuth, ScramAuth, AnonAuth};
-use crate::non_stanzas::{AuthStart, AuthResponse, DefinedCondition, StreamStart, StreamEnd};
-use crate::non_stanzas::{StreamError, StartTls};
+use crate::auth::{AnonAuth, PlainAuth, ScramAuth};
+use crate::non_stanzas::{AuthResponse, AuthStart, DefinedCondition, StreamEnd, StreamStart};
+use crate::non_stanzas::{StartTls, StreamError};
 use crate::read_str::ReadString;
-use crate::stanzas::{AStanza, Stanza, IqType};
+use crate::stanzas::{AStanza, IqType, Stanza};
 use crate::xmpp_send::XmppSend;
 use crate::xmpp_socket::XmppSocket;
 
 mod auth;
 mod non_stanzas;
+pub mod ns;
 mod read_str;
+pub mod stanzas;
 mod xmpp_send;
 mod xmpp_socket;
-pub mod ns;
-pub mod stanzas;
 
 pub struct IqGuard<'a> {
     iq: stanzas::Iq,
     responded: bool,
-    handler: &'a mut XmppHandler
+    handler: &'a mut XmppHandler,
 }
 
 impl<'a> Deref for IqGuard<'a> {
     type Target = stanzas::Iq;
-    fn deref(&self) -> &stanzas::Iq { &self.iq }
+    fn deref(&self) -> &stanzas::Iq {
+        &self.iq
+    }
 }
 
 impl<'a> Drop for IqGuard<'a> {
     fn drop(&mut self) {
-        if self.responded { return }
+        if self.responded {
+            return;
+        }
 
         // Don't respond to IQs without an id attribute
-        if self.iq.id().is_none() { return; };
+        if self.iq.id().is_none() {
+            return;
+        };
 
-        let response = self.iq.error_reply(stanzas::ErrorType::Cancel,
-                                           stanzas::DefinedCondition::ServiceUnavailable, None);
+        let response = self.iq.error_reply(
+            stanzas::ErrorType::Cancel,
+            stanzas::DefinedCondition::ServiceUnavailable,
+            None,
+        );
         let _ = self.handler.send(response);
     }
 }
@@ -73,7 +82,7 @@ pub enum Event<'a> {
     Bound(Option<String>),
     BindError(stanzas::Iq),
     StreamError(xml::Element),
-    StreamClosed
+    StreamClosed,
 }
 
 struct XmppHandler {
@@ -83,13 +92,13 @@ struct XmppHandler {
     closed: bool,
     socket: XmppSocket,
     authenticator: Option<Box<dyn Authenticator + 'static>>,
-    pending_bind_id: Option<String>
+    pending_bind_id: Option<String>,
 }
 
 pub struct XmppStream {
     parser: xml::Parser,
     builder: xml::ElementBuilder,
-    handler: XmppHandler
+    handler: XmppHandler,
 }
 
 impl XmppStream {
@@ -104,8 +113,8 @@ impl XmppStream {
                 closed: false,
                 socket: XmppSocket::NoSock,
                 authenticator: None,
-                pending_bind_id: None
-            }
+                pending_bind_id: None,
+            },
         }
     }
 
@@ -128,9 +137,9 @@ impl XmppStream {
         let builder = &mut self.builder;
         let handler = &mut self.handler;
         loop {
-            let string =  match handler.socket.read_str() {
+            let string = match handler.socket.read_str() {
                 Ok(s) => s,
-                Err(_) => return Event::StreamClosed
+                Err(_) => return Event::StreamClosed,
             };
             self.parser.feed_str(&string);
             for event in &mut self.parser {
@@ -138,7 +147,8 @@ impl XmppStream {
                     Ok(xml::Event::ElementStart(xml::StartTag {
                         ref name,
                         ns: Some(ref ns),
-                        ref prefix, ..
+                        ref prefix,
+                        ..
                     })) if *name == "stream" && *ns == ns::STREAMS => {
                         println!("In: Stream start");
                         match *prefix {
@@ -155,7 +165,8 @@ impl XmppStream {
                     }
                     Ok(xml::Event::ElementEnd(xml::EndTag {
                         ref name,
-                        ns: Some(ref ns), ..
+                        ns: Some(ref ns),
+                        ..
                     })) if *name == "stream" && *ns == ns::STREAMS => {
                         println!("In: Stream end");
                         let _ = handler.close_stream();
@@ -177,45 +188,45 @@ impl XmppStream {
                             match stanza {
                                 AStanza::MessageStanza(msg) => return Event::Message(msg),
                                 AStanza::PresenceStanza(pres) => return Event::Presence(pres),
-                                AStanza::IqStanza(iq) => {
-                                    match iq.stanza_type() {
-                                        None => continue,
-                                        Some(IqType::Result)
-                                            if handler.pending_bind_id.as_ref()
-                                            .map(|x| &x[..]) == iq.id() => {
-                                                handler.pending_bind_id = None;
-                                                return Event::Bound(iq.get_xmpp_bind_jid())
-                                            },
-                                        Some(IqType::Error)
-                                            if handler.pending_bind_id.as_ref()
-                                            .map(|x| &x[..]) == iq.id() => {
-                                                handler.pending_bind_id = None;
-                                                return Event::BindError(iq)
-                                            },
-                                        Some(IqType::Result)
-                                        | Some(IqType::Error) => return Event::IqResponse(iq),
-                                        Some(IqType::Set)
-                                        | Some(IqType::Get) => return Event::IqRequest(IqGuard {
+                                AStanza::IqStanza(iq) => match iq.stanza_type() {
+                                    None => continue,
+                                    Some(IqType::Result)
+                                        if handler.pending_bind_id.as_deref() == iq.id() =>
+                                    {
+                                        handler.pending_bind_id = None;
+                                        return Event::Bound(iq.get_xmpp_bind_jid());
+                                    }
+                                    Some(IqType::Error)
+                                        if handler.pending_bind_id.as_deref() == iq.id() =>
+                                    {
+                                        handler.pending_bind_id = None;
+                                        return Event::BindError(iq);
+                                    }
+                                    Some(IqType::Result) | Some(IqType::Error) => {
+                                        return Event::IqResponse(iq)
+                                    }
+                                    Some(IqType::Set) | Some(IqType::Get) => {
+                                        return Event::IqRequest(IqGuard {
                                             iq,
                                             responded: false,
-                                            handler
+                                            handler,
                                         })
                                     }
-                                }
+                                },
                             }
                         }
                         Some(Err(e)) => {
                             println!("{}", e);
                             let _ = handler.send(StreamError {
                                 cond: DefinedCondition::InvalidXml,
-                                text: None
+                                text: None,
                             });
                             let _ = handler.close_stream();
                             // Wait for remote to close stream
                             // TODO: Avoid waiting forever
                             continue;
                         }
-                    }
+                    },
                 }
             }
         }
@@ -250,13 +261,16 @@ impl XmppHandler {
             Some(ns::STREAMS) if stanza.name == "features" => self.handle_features(stanza),
             Some(ns::FEATURE_TLS) => self.handle_starttls(stanza),
             Some(ns::FEATURE_SASL) => self.handle_sasl(stanza),
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 
     fn handle_features(&mut self, features: xml::Element) -> io::Result<()> {
         // StartTLS
-        if features.get_child("starttls", Some(ns::FEATURE_TLS)).is_some() {
+        if features
+            .get_child("starttls", Some(ns::FEATURE_TLS))
+            .is_some()
+        {
             return self.send(StartTls);
         }
 
@@ -287,12 +301,18 @@ impl XmppHandler {
         for mech in mechs {
             let mech = mech.content_str();
             let mut auth: Box<dyn Authenticator> = match &mech[..] {
-                "SCRAM-SHA-1" => Box::new(ScramAuth::new(self.username.clone(),
-                                                         self.password.clone(), None)),
-                "PLAIN" => Box::new(PlainAuth::new(self.username.clone(),
-                                                   self.password.clone(), None)),
+                "SCRAM-SHA-1" => Box::new(ScramAuth::new(
+                    self.username.clone(),
+                    self.password.clone(),
+                    None,
+                )),
+                "PLAIN" => Box::new(PlainAuth::new(
+                    self.username.clone(),
+                    self.password.clone(),
+                    None,
+                )),
                 "ANONYMOUS" => Box::new(AnonAuth::new()),
-                _ => continue
+                _ => continue,
             };
             let initial = match auth.initial() {
                 Ok(initial) => base64::encode(initial),
@@ -300,7 +320,10 @@ impl XmppHandler {
             };
             self.authenticator = Some(auth);
 
-            return self.send(AuthStart { mech: &mech, data: &initial });
+            return self.send(AuthStart {
+                mech: &mech,
+                data: &initial,
+            });
         }
 
         Ok(())
@@ -310,7 +333,7 @@ impl XmppHandler {
         if sasl.name == "challenge" {
             let challenge = match base64::decode(sasl.content_str()) {
                 Ok(c) => c,
-                Err(_) => return Ok(())
+                Err(_) => return Ok(()),
             };
 
             let result = {
@@ -331,7 +354,7 @@ impl XmppHandler {
         if sasl.name == "success" {
             let success = match base64::decode(sasl.content_str()) {
                 Ok(c) => c,
-                Err(_) => return Ok(())
+                Err(_) => return Ok(()),
             };
             {
                 let auth = self.authenticator.as_mut().unwrap();
@@ -353,7 +376,11 @@ impl XmppHandler {
         let id: String = "bind".into();
 
         let mut bind_iq = stanzas::Iq::new(stanzas::IqType::Set, id.clone());
-        bind_iq.tag(xml::Element::new("bind".into(), Some(ns::FEATURE_BIND.into()), vec![]));
+        bind_iq.tag(xml::Element::new(
+            "bind".into(),
+            Some(ns::FEATURE_BIND.into()),
+            vec![],
+        ));
         self.pending_bind_id = Some(id);
         self.send(bind_iq)
     }

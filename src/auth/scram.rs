@@ -7,11 +7,11 @@
 use std::str;
 
 use super::Authenticator;
+use openssl::hash::hash;
+use openssl::hash::MessageDigest;
+use openssl::pkcs5::pbkdf2_hmac;
 use openssl::pkey::PKey;
 use openssl::rand::rand_bytes;
-use openssl::hash::MessageDigest;
-use openssl::hash::hash;
-use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sign::Signer;
 
 macro_rules! check (
@@ -22,26 +22,27 @@ enum State {
     Initial,
     WaitFirst(String, String),
     WaitFinal(Vec<u8>),
-    Finished
+    Finished,
 }
 
 pub struct ScramAuth {
     authcid: String,
     authzid: Option<String>,
     passwd: String,
-    state: State
+    state: State,
 }
 
 fn gen_nonce() -> Result<Vec<u8>, &'static str> {
     let mut nonce = vec![0; 64];
-    rand_bytes(&mut nonce)
-        .map_err(|_| "SCRAM: Couldn't generate nonce")?;
+    rand_bytes(&mut nonce).map_err(|_| "SCRAM: Couldn't generate nonce")?;
 
     for c in nonce.iter_mut() {
         // Restrict output to printable ASCII, excluding '~'
-        *c = ( *c % (b'~' - b'!') ) + b'!';
+        *c = (*c % (b'~' - b'!')) + b'!';
         // Map occurences of ',' to '~'
-        if *c == b',' { *c = b'~' }
+        if *c == b',' {
+            *c = b'~'
+        }
     }
     Ok(nonce)
 }
@@ -56,21 +57,21 @@ fn parse_server_first<'a>(data: &'a str) -> Result<(&'a str, Vec<u8>, u16), &'st
     let mut nonce = None;
     let mut salt = None;
     let mut iter: Option<u16> = None;
-    for  sub in data.split(',') {
+    for sub in data.split(',') {
         match sub.split_at(2) {
             ("r=", r) => nonce = Some(r),
             ("s=", s) => {
                 salt = match base64::decode(s).ok() {
                     None => return Err("SCRAM: Invalid base64 encoding for salt"),
-                    s => s
+                    s => s,
                 };
-            },
+            }
             ("i=", i) => {
                 iter = match i.parse().ok() {
                     None => return Err("SCRAM: Iteration count is not a number"),
                     it => it,
                 };
-            },
+            }
             ("m=", _) => return Err("SCRAM: Unsupported mandatory extension found"),
             _ => (),
         }
@@ -89,25 +90,27 @@ impl ScramAuth {
             authcid,
             passwd,
             authzid,
-            state: State::Initial
+            state: State::Initial,
         }
     }
 
     fn handle_server_first(&mut self, data: &[u8]) -> Result<Vec<u8>, &'static str> {
         let sha1 = MessageDigest::sha1();
 
-
-        let data = check!(str::from_utf8(data).ok(), "SCRAM: Server sent non-UTF-8 data");
+        let data = check!(
+            str::from_utf8(data).ok(),
+            "SCRAM: Server sent non-UTF-8 data"
+        );
         let (nonce, salt, iter) = parse_server_first(data)?;
 
         {
             let cnonce = match self.state {
                 State::WaitFirst(ref c, _) => c,
-                _ => unreachable!()
+                _ => unreachable!(),
             };
 
             if !nonce.starts_with(cnonce) {
-                return Err("SCRAM: Server replied with invalid nonce")
+                return Err("SCRAM: Server replied with invalid nonce");
             }
         }
 
@@ -127,8 +130,14 @@ impl ScramAuth {
 
         // SaltedPassword := Hi(Normalize(password), salt, i)
         let mut salted_passwd = [0; 20];
-        pbkdf2_hmac(self.passwd.as_bytes(), &salt, usize::from(iter), sha1, &mut salted_passwd)
-            .map_err(|_|  "SCRAM: Failed to compute Hi()")?;
+        pbkdf2_hmac(
+            self.passwd.as_bytes(),
+            &salt,
+            usize::from(iter),
+            sha1,
+            &mut salted_passwd,
+        )
+        .map_err(|_| "SCRAM: Failed to compute Hi()")?;
 
         /*
          * AuthMessage := client-first-message-bare + "," +
@@ -139,7 +148,7 @@ impl ScramAuth {
         {
             let client_first_message_bare = match self.state {
                 State::WaitFirst(_, ref c) => c,
-                _ => unreachable!()
+                _ => unreachable!(),
             };
             auth_message.extend(client_first_message_bare.bytes());
         }
@@ -161,9 +170,11 @@ impl ScramAuth {
         // ServerSignature := HMAC(ServerKey, AuthMessage)
         let server_signature = hmac_sha1(&server_key, &auth_message);
         // ClientProof := ClientKey XOR ClientSignature
-        let client_proof: Vec<u8> = client_key.iter().zip(client_signature.iter()).map(|(x, y)| {
-            *x ^ *y
-        }).collect();
+        let client_proof: Vec<u8> = client_key
+            .iter()
+            .zip(client_signature.iter())
+            .map(|(x, y)| *x ^ *y)
+            .collect();
 
         // Add p=<base64(ClientProof)>
         result.extend(",p=".bytes());
@@ -175,18 +186,27 @@ impl ScramAuth {
     }
 
     fn handle_server_final(&mut self, data: &[u8]) -> Result<Vec<u8>, &'static str> {
-        let data = check!(str::from_utf8(data).ok(), "SCRAM: Server sent non-UTF-8 data");
-        if !data.starts_with("v=") { return Err("SCRAM: Server didn't sent a verifier") }
+        let data = check!(
+            str::from_utf8(data).ok(),
+            "SCRAM: Server sent non-UTF-8 data"
+        );
+        if !data.starts_with("v=") {
+            return Err("SCRAM: Server didn't sent a verifier");
+        }
 
-        let verifier = check!(base64::decode(&data[2..]).ok(),
-                              "SCRAM: Server sent verifier with invalid base64 encoding");
+        let verifier = check!(
+            base64::decode(&data[2..]).ok(),
+            "SCRAM: Server sent verifier with invalid base64 encoding"
+        );
 
         {
             let server_signature = match self.state {
                 State::WaitFinal(ref s) => s,
-                _ => unreachable!()
+                _ => unreachable!(),
             };
-            if *server_signature != verifier { return Err("SCRAM: Server sent invalid verifier"); }
+            if *server_signature != verifier {
+                return Err("SCRAM: Server sent invalid verifier");
+            }
         }
 
         self.state = State::Finished;
@@ -199,7 +219,7 @@ impl Authenticator for ScramAuth {
     fn initial(&mut self) -> Result<Vec<u8>, &'static str> {
         let gs2header = match self.authzid {
             Some(ref a) => format!("n,a={},", a),
-            None => "n,,".to_string()
+            None => "n,,".to_string(),
         };
 
         let cnonce = String::from_utf8(gen_nonce()?).expect("Generated an invalid nonce");
@@ -217,18 +237,10 @@ impl Authenticator for ScramAuth {
 
     fn continuation(&mut self, data: &[u8]) -> Result<Vec<u8>, &'static str> {
         match self.state {
-            State::Initial => {
-                self.initial()
-            }
-            State::WaitFirst(..) => {
-                self.handle_server_first(data)
-            }
-            State::WaitFinal(_) => {
-                self.handle_server_final(data)
-            }
-            State::Finished => {
-                Ok(Vec::new())
-            }
+            State::Initial => self.initial(),
+            State::WaitFirst(..) => self.handle_server_first(data),
+            State::WaitFinal(_) => self.handle_server_final(data),
+            State::Finished => Ok(Vec::new()),
         }
     }
 }

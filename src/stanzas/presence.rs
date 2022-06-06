@@ -4,8 +4,8 @@
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
 
-use xml;
 use crate::ns;
+use xml;
 
 use super::{Stanza, StanzaType};
 
@@ -18,7 +18,7 @@ pub enum PresenceType {
     Unavailable,
     Unsubscribe,
     Unsubscribed,
-    Available
+    Available,
 }
 
 impl StanzaType for PresenceType {
@@ -31,13 +31,15 @@ impl StanzaType for PresenceType {
             PresenceType::Unavailable => Some("unavailable"),
             PresenceType::Unsubscribe => Some("unsubscribe"),
             PresenceType::Unsubscribed => Some("unsubscribed"),
-            PresenceType::Available => None
+            PresenceType::Available => None,
         }
     }
 }
 
 #[derive(Clone)]
-pub struct Presence { elem: xml::Element }
+pub struct Presence {
+    elem: xml::Element,
+}
 
 fn parse_type(ty: &str) -> Option<PresenceType> {
     match ty {
@@ -48,21 +50,32 @@ fn parse_type(ty: &str) -> Option<PresenceType> {
         "unavailable" => Some(PresenceType::Unavailable),
         "unsubscribe" => Some(PresenceType::Unsubscribe),
         "unsubscribed" => Some(PresenceType::Unsubscribed),
-        _ => None
+        _ => None,
     }
 }
 
-impl_Stanza!("presence", Presence, PresenceType, parse_type, Some(PresenceType::Available));
+impl_Stanza!(
+    "presence",
+    Presence,
+    PresenceType,
+    parse_type,
+    Some(PresenceType::Available),
+);
 
 impl Presence {
     pub fn new(ty: PresenceType, id: String) -> Presence {
         let elem = if let Some(ty) = ty.attr_string() {
-            xml::Element::new("presence".into(), Some(ns::JABBER_CLIENT.into()),
-                              vec![("type".into(), None, ty.into()),
-                                   ("id".into(), None, id)])
+            xml::Element::new(
+                "presence".into(),
+                Some(ns::JABBER_CLIENT.into()),
+                vec![("type".into(), None, ty.into()), ("id".into(), None, id)],
+            )
         } else {
-            xml::Element::new("presence".into(), Some(ns::JABBER_CLIENT.into()),
-                              vec![("id".into(), None, id)])
+            xml::Element::new(
+                "presence".into(),
+                Some(ns::JABBER_CLIENT.into()),
+                vec![("id".into(), None, id)],
+            )
         };
         Presence { elem }
     }
