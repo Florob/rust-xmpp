@@ -3,7 +3,7 @@ extern crate xmpp;
 use xmpp::XmppStream;
 use xmpp::stanzas::{Iq, IqType, Stanza};
 
-const NS_PING: &'static str = "urn:xmpp:ping";
+const NS_PING: &str = "urn:xmpp:ping";
 
 fn main() {
     let mut stream = XmppStream::new("alice", "localhost", "test");
