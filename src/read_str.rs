@@ -44,7 +44,7 @@ impl<T: BufRead> ReadString for T {
         let (result, last) = {
             let available = self.fill_buf()?;
             let len = available.len();
-            let mut last = if len < 3 { 0 } else { len - 3 };
+            let mut last = len.saturating_sub(3);
             while last < len {
                 let width = utf8_char_width(available[last]);
                 if width == 0 {

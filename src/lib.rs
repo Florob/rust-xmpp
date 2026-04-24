@@ -117,7 +117,7 @@ impl XmppStream {
     pub fn connect(&mut self) -> io::Result<()> {
         let stream = {
             let address = &self.handler.domain[..];
-            TcpStream::connect(&(address, 5222))?
+            TcpStream::connect((address, 5222))?
         };
         let stream_read = stream.try_clone()?;
 
@@ -129,7 +129,7 @@ impl XmppStream {
         self.handler.send(data)
     }
 
-    pub fn handle(&mut self) -> Event {
+    pub fn handle(&mut self) -> Event<'_> {
         let builder = &mut self.builder;
         let handler = &mut self.handler;
         loop {

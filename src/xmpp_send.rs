@@ -14,7 +14,7 @@ pub trait XmppSend: fmt::Display {
     }
 }
 
-impl<'a, T: XmppSend> XmppSend for &'a T {}
+impl<T: XmppSend> XmppSend for &T {}
 
 impl XmppSend for xml::Element {}
 

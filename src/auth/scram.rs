@@ -55,7 +55,7 @@ fn hmac_sha1(key: &[u8], data: &[u8]) -> Vec<u8> {
     signer.sign_oneshot_to_vec(data).unwrap()
 }
 
-fn parse_server_first<'a>(data: &'a str) -> Result<(&'a str, Vec<u8>, u16), &'static str> {
+fn parse_server_first(data: &str) -> Result<(&str, Vec<u8>, u16), &'static str> {
     let mut nonce = None;
     let mut salt = None;
     let mut iter: Option<u16> = None;

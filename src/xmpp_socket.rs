@@ -24,21 +24,11 @@ impl XmppSocket {
         if let XmppSocket::Tcp(_, sock) = socket {
             let ctx = match SslConnector::builder(SslMethod::tls()) {
                 Ok(builder) => builder.build(),
-                Err(_) => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::Other,
-                        "Could not create SSL context",
-                    ))
-                }
+                Err(_) => return Err(io::Error::other("Could not create SSL context")),
             };
             let ssl = match ctx.connect(domain, sock) {
                 Ok(ssl) => ssl,
-                Err(_) => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::Other,
-                        "Could not create SSL stream",
-                    ))
-                }
+                Err(_) => return Err(io::Error::other("Could not create SSL stream")),
             };
             *self = XmppSocket::Tls(BufReader::new(ssl));
         } else {
