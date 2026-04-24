@@ -4,16 +4,12 @@
 // This project is MIT licensed.
 // Please see the COPYING file for more information.
 
-#![crate_name = "xmpp"]
-#![crate_type = "lib"]
-
-extern crate openssl;
-extern crate xml;
-
 use std::io;
 use std::io::{BufReader, Write};
 use std::net::TcpStream;
 use std::ops::Deref;
+
+use base64::prelude::*;
 
 use crate::auth::Authenticator;
 use crate::auth::{AnonAuth, PlainAuth, ScramAuth};
@@ -315,7 +311,7 @@ impl XmppHandler {
                 _ => continue,
             };
             let initial = match auth.initial() {
-                Ok(initial) => base64::encode(initial),
+                Ok(initial) => BASE64_STANDARD.encode(initial),
                 Err(_) => continue,
             };
             self.authenticator = Some(auth);
@@ -331,7 +327,7 @@ impl XmppHandler {
 
     fn handle_sasl(&mut self, sasl: xml::Element) -> io::Result<()> {
         if sasl.name == "challenge" {
-            let challenge = match base64::decode(sasl.content_str()) {
+            let challenge = match BASE64_STANDARD.decode(sasl.content_str()) {
                 Ok(c) => c,
                 Err(_) => return Ok(()),
             };
@@ -347,12 +343,12 @@ impl XmppHandler {
                 }
             };
 
-            let data = base64::encode(result);
+            let data = BASE64_STANDARD.encode(result);
             return self.send(AuthResponse { data: &data });
         }
 
         if sasl.name == "success" {
-            let success = match base64::decode(sasl.content_str()) {
+            let success = match BASE64_STANDARD.decode(sasl.content_str()) {
                 Ok(c) => c,
                 Err(_) => return Ok(()),
             };

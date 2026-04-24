@@ -7,6 +7,8 @@
 use std::str;
 
 use super::Authenticator;
+
+use base64::prelude::*;
 use openssl::hash::hash;
 use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
@@ -61,7 +63,7 @@ fn parse_server_first<'a>(data: &'a str) -> Result<(&'a str, Vec<u8>, u16), &'st
         match sub.split_at(2) {
             ("r=", r) => nonce = Some(r),
             ("s=", s) => {
-                salt = match base64::decode(s).ok() {
+                salt = match BASE64_STANDARD.decode(s).ok() {
                     None => return Err("SCRAM: Invalid base64 encoding for salt"),
                     s => s,
                 };
@@ -115,9 +117,9 @@ impl ScramAuth {
         }
 
         let gs2header = if let Some(ref authzid) = self.authzid {
-            base64::encode(format!("n,a={},", authzid))
+            BASE64_STANDARD.encode(format!("n,a={},", authzid))
         } else {
-            base64::encode(b"n,,")
+            BASE64_STANDARD.encode(b"n,,")
         };
 
         let mut result: Vec<u8> = Vec::new();
@@ -178,7 +180,7 @@ impl ScramAuth {
 
         // Add p=<base64(ClientProof)>
         result.extend(",p=".bytes());
-        result.extend(base64::encode(client_proof).bytes());
+        result.extend(BASE64_STANDARD.encode(client_proof).bytes());
 
         self.state = State::WaitFinal(server_signature);
 
@@ -195,7 +197,7 @@ impl ScramAuth {
         }
 
         let verifier = check!(
-            base64::decode(&data[2..]).ok(),
+            BASE64_STANDARD.decode(&data[2..]).ok(),
             "SCRAM: Server sent verifier with invalid base64 encoding"
         );
 

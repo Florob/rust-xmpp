@@ -9,5 +9,5 @@ name = "xmpp"
 
 [dependencies]
 RustyXML = "0.3.0"
-base64 = "0.13.0"
-openssl = "0.10.40"
+base64 = "0.22.0"
+openssl = "0.10.78"
